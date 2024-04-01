@@ -71,8 +71,8 @@ WEBROOT
 
 ### Limitations
 * If the folder has 2 images with same name eg `photo.jpg`, and `photo.png` it will auto rename one eg. `photo_1.png` so thumbnail can be served.
-* Only empty directories can be deleted from browser.
-* Recycle folder cannot be viewed from browser.
+* Only empty directories can be deleted from the browser.
+* Recycle folder cannot be viewed from the browser.
 * Access to the '/pictures and /thumbs' directory should be restricted to logged-in users. Configuration files for nginx/Apache can be found in the '/data' directory.
 
 ### TODO
