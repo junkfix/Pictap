@@ -85,6 +85,7 @@ WEBROOT
 * Add TensorFlow facenet for face recognisation and group photos by face
 * Duplicates find and delete
 * Add option to generate multiple image sizes for faster access when viewed on a small screen.
+* Add Audio support
 * Make non streamable videos streamable for eg. mpg/avi
 * Convert other image formats (eg. HEIC) to jpg
 * Create cron tasks to monitor changes in the image folder
