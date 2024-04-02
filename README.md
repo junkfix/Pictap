@@ -45,7 +45,7 @@ Unlike other online solutions, Pictap is tailored specifically for home users se
 
 ## Minimum Requirements:
 
-* **PHP 8+ with sqlite3 database support**
+* **PHP 8+** with sqlite3 database support
 * **Linux Environment:** Tested on Debian (Raspberry PI bullseye).
 * **Binaries:** Requires ffmpeg, exiftool, and jpegtran binaries. `sudo apt install ffmpeg exiftool libjpeg-progs`
 * **Web Server:** nginx (or Apache) with optional SSL support for the PWA web app.
