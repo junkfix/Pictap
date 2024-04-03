@@ -1,0 +1,18 @@
+location /data/ {
+	deny all;
+	return 404;
+}
+
+location ~ ^/(pictures|thumbs) {
+	set $pictap "login";
+	if ($http_cookie ~* "pictap=([A-Za-z0-9-]+)") {
+		set $pictap $1;
+	}
+	if ($pictap = "login") {
+		return 401;
+	}
+	if (!-f $document_root/data/auth/${pictap}.txt) {
+		return 401;
+	}
+	try_files $uri $uri/ =404;
+}

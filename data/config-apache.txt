@@ -1,0 +1,17 @@
+# untested
+<Location /data/>
+	Deny from all
+</Location>
+<LocationMatch "^/(pictures|thumbs)">
+	RewriteEngine On
+	RewriteRule .* - [E=pictap:login]
+	RewriteCond %{HTTP_COOKIE} pictap=([A-Za-z0-9-]+) [NC]
+	RewriteRule .* - [E=pictap:%1]
+	RewriteCond %{ENV:pictap} ^login$
+	RewriteRule .* - [F]
+	RewriteCond %{DOCUMENT_ROOT}/data/auth/%{ENV:pictap}.txt !-f
+	RewriteRule .* - [R=401,L]
+	RewriteCond %{REQUEST_FILENAME} !-f
+	RewriteCond %{REQUEST_FILENAME} !-d
+	RewriteRule .* - [L]
+</LocationMatch>
