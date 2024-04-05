@@ -1,7 +1,7 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['1.0.1','1,1']; //[main, [config,db]]
+const PIC_VER = ['1.0.2','1,1']; //[main, [config,db]]
 
 if(get('sf')){sfile(get('sf'));}
 
@@ -640,7 +640,7 @@ function scanFolder($dir,$force=0){
 
 	$did = $dirs['dirid'];
 	
-	$dthm = null;
+	$dthm = $dirs['thm'];
 	
 	$old=[];
 	
@@ -736,7 +736,7 @@ function scanFolder($dir,$force=0){
 						logger('Missing thumb '.$tn);
 						updateFile($cfid, ['th'=>2]);
 					}
-					if($filename === PICTAP->folder_thumb){
+					if($filename === PICTAP->folder_thumb && !$dthm){
 						$dthm = $cfid;
 					}
 				}
@@ -777,7 +777,7 @@ function scanFolder($dir,$force=0){
 				if(!$ft){$c['tk']=$filemtime;}
 				$cfid = insertFile($c,$filename);
 			}
-			if($filename === PICTAP->folder_thumb){
+			if($filename === PICTAP->folder_thumb && !$dthm){
 				$dthm = $cfid;
 			}
 				
