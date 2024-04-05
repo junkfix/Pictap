@@ -1,4 +1,4 @@
-/*! Pictap Gallery 1.0.0
+/*! Pictap Gallery 1.0.1
 https://github.com/junkfix/Pictap */
 
 
@@ -131,7 +131,7 @@ const _att = (el, k, v) => {
 		return el.getAttribute(k);
 	}
 	el.setAttribute(k, v);
-}
+};
 
 function debounce(fn, ms = 100){
 	let tout;
@@ -140,7 +140,7 @@ function debounce(fn, ms = 100){
 		if(tout){clearTimeout(tout);}
 		tout = setTimeout(() => fn.apply(c, args), ms);
 	};
-};
+}
 
 function throttle(fn, mx){
 	if(!mx) return fn;
@@ -150,7 +150,7 @@ function throttle(fn, mx){
 		fn.apply(this, args);
 		calm = setTimeout(()=>{calm = 0;}, mx);
 	};
-};
+}
 
 const ucfirst = (s) => (s[0].toUpperCase() + s.slice(1));
 
@@ -178,13 +178,13 @@ const slideUp = (el, ms = 500) => {
 		s.removeProperty('transition-duration');
 		s.removeProperty('transition-property');
 	});
-}
+};
 
 const slideDown = (el, ms = 500) => {
 	let s = el.style;
 	s.removeProperty('display');
 	let display = window.getComputedStyle(el).display;
-	if (display === 'none') display = 'block';
+	if(display === 'none'){display = 'block';}
 	s.display = display;
 	let height = el.offsetHeight;
 	s.overflow = 'hidden';
@@ -199,12 +199,12 @@ const slideDown = (el, ms = 500) => {
 		s.removeProperty('transition-duration');
 		s.removeProperty('transition-property');
 	});
-}
+};
 
 
 
-function filesize(bytes) {
-	if (!bytes){return '0 B';}
+function filesize(bytes){
+	if(!bytes){return '0 B';}
 	const k = 1024;
 	const sizes = ['B','KB','MB','GB','TB','PB'];
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -217,7 +217,7 @@ function filesize(bytes) {
 
 
 
-function relativeDate(t) {
+function relativeDate(t){
 	if(!t){return '';}
 	const diff = t - (Date.now() / 1000);
 
@@ -230,9 +230,9 @@ function relativeDate(t) {
 		["minute", 60]
 	];
 
-	for (const [label, seconds] of units) {
+	for(const [label, seconds] of units){
 		const f = Math.floor(Math.abs(diff) / seconds);
-		if (f >= 1){
+		if(f >= 1){
 			try{
 				const rtf = new Intl.RelativeTimeFormat(navigator.language,{numeric:'auto'});
 				return rtf.format(diff<0 ? -f : f, label);
@@ -255,17 +255,17 @@ function getFilename(p){
 	return p.split('/').reverse()[0];
 }
 
-function removeExt(url) {
-    const file = url.split('/').pop(); // Get the file name from the path
+function removeExt(url){
+    const file = url.split('/').pop();
     const n = file.lastIndexOf('.');
-    if (n === -1) {return url;}
+    if(n === -1){return url;}
     return url.substring(0, url.lastIndexOf('.'));
 }
 
 
-function getExt(url) {
+function getExt(url){
 	const file = url.split('/').pop();
-	if (file === undefined || file === '' || file === '.') {
+	if(file === undefined || file === '' || file === '.'){
 		return '';
 	}
 	const ext = file.split('.').pop().toLowerCase();
@@ -280,7 +280,7 @@ function mydb(tb){
 	return new Promise((resolve, reject) => {
 		const dn = window.location.pathname.replace(/\//g,'-');
 		const init = ()=>{
-			const dbo = window.indexedDB.open(dn, 1);
+			const dbo = window.indexedDB.open(dn, 2);
 			dbo.onsuccess = () => {
 				db.zb = dbo.result;
 				resolve(act);
@@ -295,13 +295,13 @@ function mydb(tb){
 			};
 			dbo.onupgradeneeded = (e) => {
 				db.zb = dbo.result;
-				for (const i in db) {
+				for(const i in db){
 					if(i=='zb'){continue;}
 					if(e.oldVersion){try{db.zb.deleteObjectStore(i);}catch(e){}}
 					db.zb.createObjectStore(i, {keyPath: 'i'});
-				};
+				}
 			};
-		}
+		};
 
 		const act = {
 			get: (k,v) => qu('get', k, v),
@@ -327,7 +327,7 @@ function mydb(tb){
 				param = pp;
 			}
 			const multi = param && Array.isArray(param);
-			if (multi) {
+			if(multi){
 				Promise.all(param.map(key => {
 					return new Promise((resolve, reject) => {
 						if(m === 'get'){key+='';}
@@ -336,9 +336,9 @@ function mydb(tb){
 						r.onerror = e => reject(e.target.error);
 					});
 				})).then(r => {
-					if (m === 'get') {
+					if(m === 'get'){
 						const s = r.findIndex(i => i === undefined);
-						if (s !== -1) {
+						if(s !== -1){
 							console.log('Missing: ' + param[s]);
 							r = undefined;
 						}else if(r){
@@ -352,12 +352,12 @@ function mydb(tb){
 
 					resolveq(r);
 				}).catch(e => rejectq(e));
-			} else {
+			}else{
 				const r = store[m](param);
 				r.onsuccess = (e) => {
-					let j = e.target.result
+					let j = e.target.result;
 					if(m === 'get'){
-						if(j && j.hasOwnProperty('v')) {
+						if(j && j.hasOwnProperty('v')){
 							j = j.v;
 						}else if(pval !== undefined){
 							j = pval;
@@ -385,7 +385,7 @@ function sharedView(f){
 			const im = _ce('img');
 			_att(im,'loading','lazy');
 			im.onload = imld;
-			_att(im,'src', f.url + encodeURIComponent(v.fileid + 't-'+removeExt(v.file)+'.webp'));
+			_att(im,'src', f.url + encodeURIComponent(v.fileid + 't-'+removeExt(v.file)+'.webp?mt='+v.mt));
 			ah.appendChild(im);
 			ah.appendChild(_ce('i-con'));
 		}else{
@@ -407,7 +407,7 @@ function sharedView(f){
 		}
 		ah.appendChild(fo);
 		
-		_att(ah,'href', f.url + v.fileid + 'f-'+encodeURIComponent(v.file));
+		_att(ah,'href', f.url + v.fileid + 'f-'+encodeURIComponent(v.file)+'?mt='+v.mt);
 		g.appendChild(ah);
 	});
 	const lbox = new PhotoSwipeLightbox({
@@ -431,11 +431,11 @@ function sharedView(f){
 
 	//fix back btn
 	if(!history.state||!history.state.pswp||history.state.path!==location.href){history.pushState({pswp:true,path:location.href},null,location.href);}
-	window.addEventListener('popstate',function(e){if(typeof pswp==="object"&&pswp&&pswp.isOpen){history.pushState({pswp:true,path:location.href},null,location.href);pswp.close()}else{history.go(-1)}});	
+	window.addEventListener('popstate',function(e){if(typeof pswp==="object"&&pswp&&pswp.isOpen){history.pushState({pswp:true,path:location.href},null,location.href);pswp.close();}else{history.go(-1)}});	
 }
 
 
-function lsclear() {
+function lsclear(){
 	navi.sort={};
 	navi.scroll={};
 	db.d.wipe();
@@ -449,7 +449,7 @@ function lsscroll(){
 
 
 
-function post(opt) {
+function post(opt){
 	const url = opt.url ? opt.url : window.location.pathname;
 	fetch(url, {
 		method: 'POST',
@@ -460,13 +460,13 @@ function post(opt) {
 		body: opt.params
 	})
 	.then(response => {
-		if (response.status === 200) {
+		if(response.status === 200){
 			return response.json();
-		} else if (response.status === 401) {
+		}else if(response.status === 401){
 			popup('Error','Please Login');
 			wait(1000,()=>{ location.reload(); });
 			throw new Error('Not Logged in');
-		} else {
+		}else{
 			throw new Error('Server error');
 		}
 	})
@@ -481,18 +481,17 @@ function post(opt) {
 				delete json.Dir;
 				buildMenu();
 			}
-			if (opt.complete ) {
+			if(opt.complete ){
 				opt.complete(json);
 			}
 		}
 	})
 	.finally(() => {
-		if (opt.always) {
+		if(opt.always){
 			opt.always();
 		}
 	})
 	.catch(e => {
-		console.error('Post',opt, e);
 		toast(e.message,{theme: 'red',timeout:0,close:1});
 	});
 }
@@ -502,7 +501,7 @@ function post(opt) {
 
 
 
-function toast(message, opts = {}) {
+function toast(message, opts = {}){
 	opts = Object.assign({
 		timeout: 4,
 		theme: 'green',
@@ -512,7 +511,7 @@ function toast(message, opts = {}) {
 	}, opts);
 	
 	const dismiss = () => {
-		if (el) {
+		if(el){
 			el.style.opacity = 0;
 			wait(300,() => {el.remove();});
 		}
@@ -521,13 +520,13 @@ function toast(message, opts = {}) {
 	const el = _ce('div');
 	el.className = 'toast ' + opts.theme;
 	el.innerHTML = '<p>' + message + '</p>';
-	if (typeof opts.click === 'function') {
+	if(typeof opts.click === 'function'){
 		_on(el, 'click', opts.click);
 	}else{
 		el.onclick = dismiss.bind(this,el);
 	}
 	
-	if (opts.close) {
+	if(opts.close){
 		el.classList.add('close');
 		const closeBtn = _ce('i');
 		closeBtn.className = 'rbtn ico-x';
@@ -545,7 +544,7 @@ function toast(message, opts = {}) {
 	el.offsetHeight;
 	el.style.opacity = 1;
 
-	if (opts.timeout > 0) {
+	if(opts.timeout > 0){
 		wait(1000 * opts.timeout, () => {
 			dismiss();
 		});
@@ -561,7 +560,7 @@ function toast(message, opts = {}) {
 
 
 
-function popup(head, html='', options={}) {
+function popup(head, html='', options={}){
 	options = Object.assign({
 		buttons: [{
 				text: "Close",
@@ -589,7 +588,7 @@ function popup(head, html='', options={}) {
 	};
 
 	const bgclick = (e) => {
-		if (options.bgclose && !pop_el.contains(e.target)) {
+		if(options.bgclose && !pop_el.contains(e.target)){
 			e.preventDefault();
 			e.stopPropagation();
 			close();
@@ -597,7 +596,7 @@ function popup(head, html='', options={}) {
 	};
 
 	const pressed = (btn, html) => {
-		if( !btn.click || btn.click(html)) {
+		if( !btn.click || btn.click(html)){
 			close();
 		}
 	};
@@ -605,14 +604,14 @@ function popup(head, html='', options={}) {
 	const kbd = (e) => {
 		if(e.key === undefined){return;}
 		const key = e.key.toLowerCase();
-		const d = options.buttons.find(btn => {return btn.key && btn.key.toLowerCase() === key});
-		if (d) {
+		const d = options.buttons.find(btn => {return btn.key && btn.key.toLowerCase() === key;});
+		if(d){
 			throttle(()=>{
 				pressed(d, section);
 				},500)();
 			return;
 		}
-		if (key === 'escape') {
+		if(key === 'escape'){
 			close();
 		}
 	};
@@ -660,7 +659,7 @@ function popup(head, html='', options={}) {
 
 	const resz = () => {
 		pop_el.style.top = (window.pageYOffset + Math.max(100,(window.innerHeight - pop_el.offsetHeight) / 2))+'px';
-	}
+	};
 
 
 	resz();
@@ -697,7 +696,7 @@ const ddGen = (el, op, s='', id='', t='Please Select')=>{
 			_att(dh,'selected','');
 		}
 		sel_el.appendChild(dh);
-		for (const i in op){
+		for(const i in op){
 			const op_el = _ce('option');
 			const v = op[i][0]+'';
 			op_el.value = v;
@@ -709,7 +708,7 @@ const ddGen = (el, op, s='', id='', t='Please Select')=>{
 				op_el.textContent = q;
 			}
 			sel_el.appendChild(op_el);
-		};
+		}
 		el.appendChild(sel_el);
 	}	
 	return sel_el;
@@ -750,42 +749,40 @@ async function act_upload(hide,appup){
 	
 	
 	const addItem = (items,input) => {
-		for (const item of items) {
+		for(const item of items){
 			if(input){
 				upThumb(item);
 			}else{
 				const i = item.webkitGetAsEntry();
-				if (i.isFile) {
+				if(i.isFile){
 					i.file((file) => {
 						upThumb(file);
 					});
-				} else if (i.isDirectory) {
+				}else if(i.isDirectory){
 					dirScan(i.createReader());
 				}
 			}
 		}
-	}
+	};
 
 	const dirScan = (rdr) => {
 		rdr.readEntries((entries) => {
-			for (const i of entries) {
-				if (i.isFile) {
+			for(const i of entries){
+				if(i.isFile){
 					i.file((file) => {
 						upThumb(file);
 					});
-				} else if (i.isDirectory) {
+				}else if(i.isDirectory){
 					dirScan(i.createReader());
 				}
 			}
-			if (entries.length > 0) {
+			if(entries.length > 0){
 				dirScan(rdr);
 			}
 		});
-	}
+	};
 
 	const upThumb = (file) => {
-		
-		console.log(file);
 		const ext = getExt(file.name);
 		const mtype = _p.ext_images.includes(ext)? 1 : ( _p.ext_videos.includes(ext)? 2 : 0 );
 		if(mtype || (_p.ext_uploads.includes(ext) || _p.ext_uploads.includes('*'))){
@@ -823,16 +820,16 @@ async function act_upload(hide,appup){
 			up.List.push({f:file,el:pg,cl:b,im:im});
 			up.maxthm--;
 		}
-	}
+	};
 
 
 	const upBar = (el,p)=>{
 		el.style.width = p + '%';
 		el.nextElementSibling.innerText = Math.floor(p) + '%';	
-	}
+	};
 
 	const upNext = (failed,curr) => {
-		if (up.cancel || !up.List.length) {
+		if(up.cancel || !up.List.length){
 			up.List = failed;
 			up.lmsg = '';
 			if(up.cancel){
@@ -859,14 +856,14 @@ async function act_upload(hide,appup){
 		up.xhr = new XMLHttpRequest();
 		up.xhr.open('POST', location.pathname+'?upload=js&mode='+up.Mode+'&mtime='+file.lastModified+'&updir='+up.dir, true);
 		up.xhr.responseType = 'json';
-		up.xhr.upload.onprogress = function (e) {
-			if (e.lengthComputable) {
+		up.xhr.upload.onprogress = function (e){
+			if(e.lengthComputable){
 				upBar(el,(e.loaded / e.total) * 100);
 			}
 		};
-		up.xhr.onload = function () {
+		up.xhr.onload = function (){
 			let p=0
-			if (up.xhr.status >= 200 && up.xhr.status < 300) {
+			if(up.xhr.status >= 200 && up.xhr.status < 300){
 				p=100;
 				const res = up.xhr.response;
 				if(res.ok){
@@ -877,7 +874,7 @@ async function act_upload(hide,appup){
 					toast(res.msg,{theme:'red',timeout:0,close:1});
 					
 				}
-			} else {
+			}else{
 				failed.push(up.List[0]);
 			}
 			upBar(el,p);
@@ -885,7 +882,7 @@ async function act_upload(hide,appup){
 			upNext(failed,curr+1);
 		};
 
-		up.xhr.onerror = function () {
+		up.xhr.onerror = function (){
 			toast('Error uploading '+file.name,{theme:'red',timeout:0,close:1});
 			failed.push(up.List[0]);
 			up.List.shift();
@@ -893,7 +890,7 @@ async function act_upload(hide,appup){
 			upBar(el,0);
 		};
 		up.xhr.send(fd);
-	}
+	};
 
 
 
@@ -938,7 +935,7 @@ async function act_upload(hide,appup){
 	bt.className = 'btn default';
 	bt.textContent = 'Upload Now';
 	bt.onclick = () => {
-		if (up.List.length === 0) {
+		if(up.List.length === 0){
 			toast('No files selected',{theme:'red'});
 			return;
 		}
@@ -963,7 +960,7 @@ async function act_upload(hide,appup){
 	
 	const sl = _ce('label');
 	const sd = ddGen(sl, [[0,'Skip Duplicates'],[1,'Auto Rename'],[2,'Overwrite']], up.Mode);
-	sd.onchange = () => {up.Mode = parseInt(sd.value, 10);}
+	sd.onchange = () => {up.Mode = parseInt(sd.value, 10);};
 
 	p2.appendChild(sl);
 
@@ -976,7 +973,7 @@ async function act_upload(hide,appup){
 	
 	u.appendChild(h);
 	if(appup){
-		for(const file of appup) {
+		for(const file of appup){
 			upThumb(file);
 		}
 	}
@@ -1041,7 +1038,7 @@ function act_edit(atag){
 		mtype = 2;
 	}
 	
-	if(!mtype){toast('Not Supported');return;}
+	if(!mtype){toast(ext+' Not Supported');return;}
 	
 	let mu = getUrlID(); mu.url +='#edit/'+fileid+'/'+encodeURIComponent(file);
 	updHist(1,mu);
@@ -1055,7 +1052,7 @@ function act_edit(atag){
 		h:{1:2,8:7,3:4,6:5,2:1,5:6,4:3,7:8},
 		v:{1:4,8:7,3:2,6:5,4:1,7:8,2:3,5:6},
 		d:{1:0,2:0,3:180,4:0,5:90,6:90,7:90,8:270},
-	}
+	};
 	const tclose = _id("tclose");
 	const body = _qs("body");
 	body.classList.add('edit','rotate');
@@ -1107,7 +1104,7 @@ function act_edit(atag){
 			
 			let orgw = crop.orgw, orgh = crop.orgh;
 
-			switch (rotate.d[curot]) {
+			switch (rotate.d[curot]){
 				case 90:
 					[X, Y, W, H, orgw, orgh] = [Y, orgw - X - W, H, W, orgh, orgw];
 					break;
@@ -1121,16 +1118,16 @@ function act_edit(atag){
 					break;
 			}
 			
-			if ( curot === 2 || curot === 7 ) {
+			if( curot === 2 || curot === 7 ){
 				X = orgw - X - W;
 			}
 
-			if ( curot === 4 || curot === 5 ) {
+			if( curot === 4 || curot === 5 ){
 				Y = orgh - Y - H;
 			}
 			
 			if(crop.orgw !== W || crop.orgh !== H){
-				u += '&w='+W+'&h='+H+'&x='+X+'&y='+Y
+				u += '&w='+W+'&h='+H+'&x='+X+'&y='+Y;
 			}			
 		}else{
 			if(curot){
@@ -1189,7 +1186,7 @@ function act_edit(atag){
 	const pxy = (e) => {
 		const t = (window.TouchEvent && e instanceof TouchEvent)? e.touches[0] : e;
 		crop.nX = t.pageX;
-		crop.nY = t.pageY
+		crop.nY = t.pageY;
 	};
 	const DRAG = 1; const RESIZE = 2;
 
@@ -1218,12 +1215,12 @@ function act_edit(atag){
 		pxy(e);
 		crop.x = crop.nX;
 		crop.y = crop.nY;	
-	}
+	};
 
 	const bound = (n,r) => {
 		if(!n){
 			n = {};
-			for (const i of points){
+			for(const i of points){
 				n[i] = crop[i];
 			}			
 		}
@@ -1238,20 +1235,20 @@ function act_edit(atag){
 			n.width += Math.abs(n.width);
 			n.left=0;
 		}
-		if (n.width < MIN_WIDTH) {
+		if(n.width < MIN_WIDTH){
 			n.width = MIN_WIDTH;
 			n.height = n.width / asp;
 		}
 
-		if (n.height < MIN_WIDTH) {
+		if(n.height < MIN_WIDTH){
 			n.height = MIN_WIDTH;
 			n.width = n.height * asp;
 		}
 
-		if (aspects[curasp]) {
-			if (n.width / n.height < aspects[curasp]) {
+		if(aspects[curasp]){
+			if(n.width / n.height < aspects[curasp]){
 				n.height = n.width / aspects[curasp];
-			} else {
+			}else{
 				n.width = n.height * aspects[curasp];
 			}
 		}
@@ -1262,7 +1259,7 @@ function act_edit(atag){
 		}
 		
 		const c = {};
-		for (const i of points){
+		for(const i of points){
 			crop[i] = n[i];
 			c[i] = n[i] + 'px';
 		}
@@ -1278,7 +1275,7 @@ function act_edit(atag){
 	const pMove = (force) => {
 		if(!force && (!inRange(crop.nX, imxy.x, imxy.xx) || !inRange(crop.nY, imxy.y, imxy.yy))){
 			crop.action = 0;
-			return
+			return;
 		}
 
 		const X = crop.nX - crop.x;
@@ -1287,25 +1284,25 @@ function act_edit(atag){
 		crop.y = crop.nY;
 		let n = {...crop};
 
-		if (crop.action === DRAG){
+		if(crop.action === DRAG){
 			n.left = Math.max(0, Math.min(n.left+X, crop.boxw - crop.width));
 			n.top = Math.max(0, Math.min(n.top+Y, crop.boxh - crop.height));
 		
 		}else{
-			if (crop.corner.includes("top")) {
+			if(crop.corner.includes("top")){
 				n.height -= Y;
 				n.top += Y;
 			}
 			
-			if (crop.corner.includes("bottom")) {
+			if(crop.corner.includes("bottom")){
 				n.height += Y;
 			}
 			
-			if (crop.corner.includes("right")) {
+			if(crop.corner.includes("right")){
 				n.width += X;
 			}
 			
-			if (crop.corner.includes("left")) {
+			if(crop.corner.includes("left")){
 				n.width -= X;
 				n.left += X;
 			}
@@ -1326,15 +1323,13 @@ function act_edit(atag){
 		n.height = Math.min(Math.max(0, n.height), crop.boxh);
 	
 		n = bound(n);
-	}
+	};
 
 
 	const pointerUp = (e) => {
 		if(!crop.action){return;}
 		crop.action = 0;
-
-		
-	}
+	};
 
 	const pointerMove = (e) => {
 		if(!crop.action){return;}
@@ -1367,7 +1362,7 @@ function act_edit(atag){
 		}
 		navi.edit = 0;
 		restoreScroll();
-	}
+	};
 
 
 	const winSz = () =>{
@@ -1419,7 +1414,7 @@ function act_edit(atag){
 		let cw = iw;
 		let ch = ih;
 
-		if (curot > 4) {
+		if(curot > 4){
 			[cw, ch] = [ih, iw];
 		}
 
@@ -1447,7 +1442,7 @@ function act_edit(atag){
 		
 		const ctx = canvas.getContext("2d");
 		
-		switch (curot) {
+		switch (curot){
 			case 2: ctx.transform(-1, 0, 0, 1, iw, 0); break;
 			case 3: ctx.transform(-1, 0, 0, -1, iw, ih); break;
 			case 4: ctx.transform(1, 0, 0, -1, 0, ih); break;
@@ -1461,10 +1456,10 @@ function act_edit(atag){
 		ctx.drawImage(image, 0, 0 , iw, ih);
 		const d=imgdiv.getBoundingClientRect();
 		imxy = {x: d.x-50, y: d.y-50, xx: d.x + d.width+50, yy: d.y + d.height+50};
-	}
+	};
 	
 
-	for (const [k, v] of Object.entries(icons)) {
+	for(const [k, v] of Object.entries(icons)){
 		const d = _ce('div');
 		d.className = 'rbtn';
 		const i = _ce('i');
@@ -1477,7 +1472,7 @@ function act_edit(atag){
 	
 	if(mtype === 1){
 		
-		for (const i of ['top','left','bottom','right','topleft','topright','bottomleft','bottomright']) {
+		for(const i of ['top','left','bottom','right','topleft','topright','bottomleft','bottomright']){
 			const d = _ce('div');
 			d.id = i;
 			_on(d,pointDown, (e) => {pDown(e,d);});
@@ -1486,7 +1481,7 @@ function act_edit(atag){
 
 		imgdiv.appendChild(cropbg);
 		imgdiv.appendChild(cropsel);
-		for (const [k, v] of Object.entries(aspects)) {
+		for(const [k, v] of Object.entries(aspects)){
 			const b = _ce('button');
 			b.textContent = k;
 			b.onclick = ()=>{
@@ -1525,7 +1520,7 @@ function act_edit(atag){
 				image.style.opacity = 0;
 			});
 			
-		}
+		};
 		image.onerror = (e) => {
 			popup("Load error: "+file);
 			tclose.click();
@@ -1533,13 +1528,7 @@ function act_edit(atag){
 		image.src = src;
 		
 	}
-
-	// exiftool -n "-Orientation=1" -overwrite_original 20240202_034158.jpg
-	// exiftool "-rotation<${rotation;$_ += 90}" 22.mp4
-	
-	tclose.onclick = close
-
-	
+	tclose.onclick = close;
 }
 
 
@@ -1578,7 +1567,7 @@ function getDirID(n){
 }
 
 
-function updateDirSize() {
+function updateDirSize(){
 	const b = Object.entries(Dir.d).map(([i, v]) => ({i: parseInt(i), p: v[1], s: v[3], q: v[4]}));
   
 	const pd = (i) => b.reduce((a, n) => n.p === i ? [...a, n, ...pd(n.i)] : a, []);
@@ -1597,7 +1586,7 @@ function thumbUrl(did, file, mt){
 	if(p !== ''){p+='/';}
 	p = p + removeExt(file);
 	p = p.split('/').map(f => encodeURIComponent(f)).join('/');
-	return _p.url_thumbs + '/' + p + '.webp?'+mt
+	return _p.url_thumbs + '/' + p + '.webp?'+mt;
 }
 
 
@@ -1608,7 +1597,7 @@ function thumbUrl(did, file, mt){
 
 
 
-async function buildMenu() {
+async function buildMenu(){
 	const rule = morderget();
 	if(!rule.az){rule.az = msorter.default[rule.i];}
 	const menuArr = (id) => {
@@ -1642,13 +1631,13 @@ async function buildMenu() {
 	const plus = (b) => {
 		var nxtul = b.nextElementSibling;
 
-		if (nxtul) {
+		if(nxtul){
 			nxtul.classList.toggle("down");
 			b.closest("li").classList.toggle("open");
 
-			if (nxtul.classList.contains("down")) {
+			if(nxtul.classList.contains("down")){
 				slideDown(nxtul);
-			} else {
+			}else{
 				slideUp(nxtul);
 			}
 		}
@@ -1656,7 +1645,7 @@ async function buildMenu() {
 
 	const itag = (i) => {
 		i.click();
-	}
+	};
 
 	const genLI = (folder) => {
 		const li = _ce('li');
@@ -1666,11 +1655,11 @@ async function buildMenu() {
 		const a = _ce('a');
 		a.href = getUrlID(folder.id).url;
 		let n = folder.name+'';
-		if(n === ''){n = 'Root';a.className = 'root'}
+		if(n === ''){n = 'Root';a.className = 'root';}
 		a.textContent = n;
 		a.onclick = genPage.bind(this,folder.id, a);
 		li.appendChild(a);
-		if (folder.cubs.length > 0) {
+		if(folder.cubs.length > 0){
 			const b = _ce('b');
 			b.onclick = plus.bind(this,b);
 			li.appendChild(b);
@@ -1684,7 +1673,7 @@ async function buildMenu() {
 			});
 
 			li.appendChild(subUl);
-		} else {
+		}else{
 			const i = _ce('i');
 			i.onclick = itag.bind(this,a);
 			li.appendChild(i);
@@ -1697,12 +1686,8 @@ async function buildMenu() {
 	const menu = _id('menu');
 	menu.innerHTML = '<ul id="premenu"><li><a href="?a=Albums"><u class="ico-album"></u>Albums</a></li><li><a href="?t=Timeline"><u class="ico-date"></u>Timeline</a></li><li><a href="?k=Tags"><u class="ico-tag"></u>Tags</a></li></ul>';
 	
-	//const tu = _ce('ul');
-	//const tl = _ce('li');
-	
 	const ul = _ce('ul');
 	const sor = Object.keys(Dir.d).map(menuArr)[0];
-	console.log(sor)
 	const li = genLI(sor);
 	ul.appendChild(li);
 	menu.appendChild(ul);
@@ -1728,7 +1713,7 @@ const msorter = {
 	names: ['name','size','date'],
 	order: ['','a','d'],
 	default: ['d','d','d']
-}
+};
 
 function morderset(label,az){
 	const i = msorter.names.indexOf(label);
@@ -1755,12 +1740,12 @@ const sorter = {
 	names: ['name','size','date','dur','type','dim','best'],
 	order: ['','a','d'],
 	default: ['a','d','d','d','d','d','d']
-}
+};
 
 function orderset(label,az){
 	const m = navi.mode;
 	const id = navi.mval;
-	if(!navi.sort[m]){navi.sort[m] = {}}
+	if(!navi.sort[m]){navi.sort[m] = {};}
 
 	const i = sorter.names.indexOf(label);
 	az = (sorter.default[i] === az) ? '' : az;
@@ -1778,7 +1763,7 @@ function orderset(label,az){
 function orderget(){
 	const m = navi.mode;
 	const id = navi.mval;
-	if(!navi.sort[m]){navi.sort[m] = {}}
+	if(!navi.sort[m]){navi.sort[m] = {};}
 
 	const v = (navi.sort[m][id] || 0);
 	const i =  ((v >> 2) & 0x0F);
@@ -1795,7 +1780,7 @@ function orderget(){
 
 
 
-const viewitms = {rows:[80,250,150],tiles:[80,220,140] /*,'grid','detail'*/}
+const viewitms = {rows:[80,250,150],tiles:[80,220,140] /*,'grid','detail'*/};
 
 function changeView(v){
 	if(!v){
@@ -1813,7 +1798,7 @@ function changeRow(v,n){
 	document.documentElement.style.setProperty('--'+n, v+'px');
 }
 
-async function cMenu(e,dhis,who,rpt) {
+async function cMenu(e,dhis,who,rpt){
 	
 	if(!rpt){
 		e.preventDefault();
@@ -1855,7 +1840,7 @@ async function cMenu(e,dhis,who,rpt) {
 			}
 			case 'sels':{
 				let newsel = {};
-				for (const ah of _qsa('[data-tick]')){
+				for(const ah of _qsa('[data-tick]')){
 					const fid = gensid(ah);
 					newsel[fid] = parseInt(_att(ah,'data-s'),10);
 				}
@@ -1863,7 +1848,7 @@ async function cMenu(e,dhis,who,rpt) {
 					newsel = {};
 				}
 				if(action === 'invert'){
-					for (const id in navi.ticked) {
+					for(const id in navi.ticked){
 						delete newsel[id];
 					}
 					
@@ -1887,11 +1872,11 @@ async function cMenu(e,dhis,who,rpt) {
 			case 'dir':{
 				if(action === "delete"){
 					act_delete(dhis);
-				} else if(action === "move"){
+				}else if(action === "move"){
 					act_move(dhis);				
-				} else if(action === "info"){
+				}else if(action === "info"){
 					act_info(dhis,1);				
-				} else if(action === "rename"){
+				}else if(action === "rename"){
 					act_rename(dhis);				
 				} 
 				
@@ -1901,14 +1886,14 @@ async function cMenu(e,dhis,who,rpt) {
 				
 				if(action === "delete"){
 					remAlb(_att(dhis,'data-aid'));
-				} else if(action === "info"){
+				}else if(action === "info"){
 					editAlb(_att(dhis,'data-aid'));
 				}
 				
 				break;
 			}
 			case 'img':{
-				if (lightbox.pswp && lightbox.pswp.isOpen) {
+				if(lightbox.pswp && lightbox.pswp.isOpen){
 					navi.backbtn = 1;
 					lightbox.pswp.close();
 				}
@@ -2031,19 +2016,18 @@ async function cMenu(e,dhis,who,rpt) {
 			}
 		}
 		hideContextMenu(e);
-	}
+	};
 
 	
 	navi.cm.el = dhis;
 	
-	//sidebar(0);
     const clickX = e.clientX || e.touches[0].clientX;
     const clickY = e.clientY || e.touches[0].clientY;
 
 	
 	const el = e.target;
 	
-	if (!el || !el.getBoundingClientRect) {
+	if(!el || !el.getBoundingClientRect){
 		return;
 	}
 	
@@ -2110,7 +2094,7 @@ async function cMenu(e,dhis,who,rpt) {
 			break;
 		}
 		case 'sels':{
-			const c = {none:'ring',invert:'invert',all:'tick'}
+			const c = {none: 'ring', invert: 'invert', all: 'tick'};
 			for(const i of Object.keys(c)){
 				const li = _ce('li');
 				li.innerHTML = '<i class="ico-'+c[i]+'"></i> Select '+ucfirst(i);
@@ -2157,9 +2141,9 @@ async function cMenu(e,dhis,who,rpt) {
 			break;
 		}
 		case 'alb':{
-			if(_p.can['edit']){
+			if(_p.can.edit){
 				const li = _ce('li');
-				li.innerHTML = '<i class="ico-info"></i> '+items['albumm'];
+				li.innerHTML = '<i class="ico-info"></i> '+items.albumm;
 				li.onclick = (e)=>{cSelect(who,'info',e,li);};
 				cm.appendChild(li);
 
@@ -2282,7 +2266,7 @@ async function cMenu(e,dhis,who,rpt) {
 	const toploc = (el.clientHeight > 50 ? clickY : rect.top) - cm.clientHeight - 10 + scrollY;
 	const bottomloc = (el.clientHeight > 50 ? clickY + 20 : rect.bottom + 10) + scrollY;
 	const atbottom = bottomloc + cm.clientHeight <= window.innerHeight + scrollY;
-	const top_pos = atbottom ? bottomloc : Math.max(scrollY, toploc)
+	const top_pos = atbottom ? bottomloc : Math.max(scrollY, toploc);
 	
 	
 	
@@ -2294,7 +2278,6 @@ async function cMenu(e,dhis,who,rpt) {
 
 	
 	navi.cm.pos = scrollY;
-	//cm.style.display = 'none';
 	cm.style.left = Math.round(left_pos) + 'px';
 	cm.style.top = Math.round(top_pos) + 'px';
 	cm.classList.add(atbottom ? 'top' : 'bottom');
@@ -2309,7 +2292,7 @@ async function cMenu(e,dhis,who,rpt) {
 }
 
 
-function hideContextMenu(e) {
+function hideContextMenu(e){
 	if(!navi.cm.open){return 0;}
 	if(e){
 		e.stopPropagation();
@@ -2317,7 +2300,7 @@ function hideContextMenu(e) {
 	}
 	_off(document, 'click', hideContextMenu);
 	
-	const cm = _id('cmenu')
+	const cm = _id('cmenu');
 	cm.classList.add('chide');
 	wait(200,() => {
 		cm.style.top = '-500px';
@@ -2338,7 +2321,7 @@ function hideContextMenu(e) {
 
 
 function topbar(show){
-	if(navi.pscroll<48){show=1;};
+	if(navi.pscroll<48){show = 1;}
 	if(show == navi.top){return;}
 	if(show){
 		_id('header').classList.add('open');
@@ -2352,7 +2335,7 @@ function topbar(show){
 
 
 function sidebar(show){
-	if(show>1){show = !navi.side}
+	if(show>1){show = !navi.side;}
 	if(show == navi.side){return;}
 	if(show){
 		hideContextMenu();
@@ -2392,11 +2375,11 @@ const dirnameSrch = (kwds, allw) => {
 	const r = [];
 	if(kwds.length){
 		const kwd = kwds.toLowerCase().split(' ');
-		for (const key in Dir.d) {
+		for(const key in Dir.d){
 			const dn = Dir.d[key][0].split('/').pop().toLowerCase();
 			const m = allw? kwd.every(w => dn.includes(w)) : kwd.some(w => dn.includes(w));
 
-			if (m) {
+			if(m){
 				r.push(key);
 			}
 		}
@@ -2409,12 +2392,12 @@ function scrollPos(){
 	return (document.documentElement.scrollHeight - window.innerHeight);
 }
 const debScroll = debounce(lsscroll, 1000);
-function backupScroll() {
+function backupScroll(){
 	if(navi.edit || navi.noroll || !navi.mval){return;}
 	const p =  Math.round((window.scrollY / scrollPos()) * 100);
 	const m = navi.mode;
 	const id = navi.mval;
-	if(!navi.scroll[m]){navi.scroll[m] = {}}
+	if(!navi.scroll[m]){navi.scroll[m] = {};}
 	if(p>0){	
 		navi.scroll[m][id]=p;
 	}else{
@@ -2424,12 +2407,12 @@ function backupScroll() {
 }
 
 
-function restoreScroll() {
+function restoreScroll(){
 	let p = 0;
 	const m = navi.mode;
 	const id = navi.mval;
-	if(!navi.scroll[m]){navi.scroll[m] = {}}
-	if (!navi.noroll && navi.scroll[m][id]) {
+	if(!navi.scroll[m]){navi.scroll[m] = {};}
+	if(!navi.noroll && navi.scroll[m][id]){
 		p = (parseFloat(navi.scroll[m][id]) / 100) * scrollPos();
 	}
 	
@@ -2501,7 +2484,7 @@ function tickShow(e,el){
 		_id('topbar').classList.remove('tick');
 	}
 	
-	for (const ah of _qsa('[data-tick]')){
+	for(const ah of _qsa('[data-tick]')){
 		const id = gensid(ah);
 		_att(ah,'data-tick', navi.ticked[id] ? '1' : '0');
 	}
@@ -2518,7 +2501,7 @@ function citySrch(e){
 	const upcity = (d) => {
 		const id = _id('clat');
 		id.innerHTML = '';
-		for (const [k, v] of Object.entries(d)) {
+		for(const [k, v] of Object.entries(d)){
 			const o = _ce('option');
 			o.value = k;
 			o.textContent = v;
@@ -2533,7 +2516,7 @@ function citySrch(e){
 				params: 'task=city&name='+encodeURIComponent(kwd),
 				complete: function(j){
 					if(!j.ok){toast(j.msg,{theme:'red',timeout:0,close:1}); return;}
-					for (const [k, v] of Object.entries(j.msg)) {
+					for(const [k, v] of Object.entries(j.msg)){
 						cityDb[k] = {[k]: v};
 					}
 					cityDb[kwd] = {...j.msg};
@@ -2548,7 +2531,7 @@ function citySrch(e){
 
 
 const act_share = async (itm,fname) => {
-    if (!('canShare' in navigator)) {
+    if(!('canShare' in navigator)){
 		toast('Share not supported');
 		return;
 	}
@@ -2569,14 +2552,14 @@ const act_share = async (itm,fname) => {
 				const chunks = [];
 				const reader = rstrm.getReader();
 
-				while (true) {
+				while (true){
 					const { done, value } = await reader.read();
-					if (sigbort && sigbort.aborted) {
+					if(sigbort && sigbort.aborted){
 						reader.cancel();
 						toast('Download aborted.');
 						throw new Error('Download aborted');
 					}
-					if (done) {
+					if(done){
 						break;
 					}
 
@@ -2594,8 +2577,8 @@ const act_share = async (itm,fname) => {
 				return true;
 			}}],bgclose: 0});
 			
-			try {
-				for (let i = 0; i < h.length; i++) {
+			try{
+				for(let i = 0; i < h.length; i++){
 					
 					const [id, fileName, fileid]=h[i].split('/');
 					const el = _qs('[data-i="'+fileid+'"]');
@@ -2606,7 +2589,7 @@ const act_share = async (itm,fname) => {
 					const res = await fetch(el.href, { cache: "force-cache", signal: sigbort });
 
 					const rstrm = res.body.pipeThrough(new TransformStream({
-						transform(chunk, controller) {
+						transform(chunk, controller){
 							dBytes += chunk.length;
 							pxp.head(((dBytes/navi.ticksize)*100).toFixed(2) + '%');
 							pxp.bar(dBytes, navi.ticksize);
@@ -2619,7 +2602,7 @@ const act_share = async (itm,fname) => {
 					fcontent.push({ blob, fileName });
 
 				} 
-			} catch (error) {
+			}catch(error){
 				toast('Download error: '+ error.message);
 			} finally {
 				aborter.abort();
@@ -2643,10 +2626,10 @@ const act_share = async (itm,fname) => {
 					text: "Yes",
 					click: async (html) => {
 						let err = 0;
-						if (navigator.canShare(data)) {
-							try {
+						if(navigator.canShare(data)){
+							try{
 								await navigator.share(data);
-							} catch (e) {
+							}catch(e){
 								err = 1;
 							}
 						}else{
@@ -2814,7 +2797,7 @@ function act_info(el,dir){
 	}
 	
 	const t = _ce('table');
-	t.className = 'inf'
+	t.className = 'inf';
 	for(const i in n){
 		const r = _ce('tr');
 		
@@ -2924,11 +2907,11 @@ function imageAlb(act,id,alb){
 function itick(n,t,c,ty='checkbox'){
 	const l = _ce('label');
 	l.className = 'togg';
-	const i = _ce('input')
+	const i = _ce('input');
 	_att(i,'type',ty);
 	_att(i,'name',n);
 	if(c){_att(i,'checked','');}
-	l.appendChild(i)
+	l.appendChild(i);
 	l.appendChild(document.createTextNode(' ' + t));
 	return {l,i};	
 }
@@ -3132,7 +3115,6 @@ function act_download(id){
 }
 
 function set_thumb(id){
-	console.log(id);
 	const [fid,d,name,fileid,single] = getselected(id);
 	if(!fid){return;}
 	
@@ -3221,7 +3203,7 @@ function fsTask(task, fid, newitm, el, tst, tot, lmsg, err){
 					if(itype==='dir'){
 						if(task==='rename'){
 							let newn = Dir.d[id][0].split('/');
-							newn[newn.length - 1] = newitm
+							newn[newn.length - 1] = newitm;
 							Dir.d[id][0] = newn.join('/');
 							buildMenu();
 						}else if(task==='move'){
@@ -3306,7 +3288,7 @@ const vduration = (i) => {
 	t += (Math.floor(i/60)-Math.floor(i/3600)*60).toString().padStart(2,'0');
 	t += ':' + Math.round(i%60).toString().padStart(2,'0');
 	return t;
-}
+};
 
 function svgExt(ext){
 	return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 2c-1 0-2 1-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H6Z" class="sbg"/><path  class="sco" d="m14 6c0 1 1 2 2 2h4l-6-6z"/><text x="25%" y="70%" font-family="sans-serif" font-size=".4em" lengthAdjust="spacingAndGlyphs" textLength="50%" class="stx">'+ext.toUpperCase()+'</text></svg>';
@@ -3362,18 +3344,18 @@ function expandMenu(){
 		li.classList.remove("curr");
 		if(_att(li,"data-id") == navi.dir){
 			let p = li;
-			while (p && p.tagName !== 'DIV') {
-				if (p.tagName === 'UL') {
+			while (p && p.tagName !== 'DIV'){
+				if(p.tagName === 'UL'){
 					p.classList.add('down');
 					p.style.display = 'block';
 				}
-				if (p.tagName === 'LI') {
+				if(p.tagName === 'LI'){
 					p.classList.add('open');
 				}
 				p = p.parentNode;
 			}
-			for (const ul of li.children) {
-				if (ul.tagName === 'UL' && !ul.classList.contains("down")){
+			for(const ul of li.children){
+				if(ul.tagName === 'UL' && !ul.classList.contains("down")){
 					ul.classList.add("down");
 					slideDown(ul);
 					li.classList.add("open");
@@ -3442,35 +3424,34 @@ const thumbLoader = async (updrefresh)=>{
 	a.classList.add('loader');
 	thumbabrt = new AbortController();
 	const signal = thumbabrt.signal;
-	try {
+	try{
 		const response = await fetch(location.pathname+url, { signal });
 		const js = await response.json();
-		if (js.ok) {
+		if(js.ok){
 			el.src = src;
 			a.dataset.pswpWidth = js.msg.w;
 			a.dataset.pswpHeight = js.msg.h;
 			db.files.get(fid).then( f => {
 				if(f){
 					f.th = 0;
-					f.w = js.msg.w
-					f.h = js.msg.h
+					f.w = js.msg.w;
+					f.h = js.msg.h;
 					db.files.put(fid, f).catch(e=>{});
 				}
 			}).catch(e=>{});
 		}
-	} catch (e) {
-		if (e.name === 'AbortError') {return;}
+	}catch(e){
+		if(e.name === 'AbortError'){return;}
 		updrefresh=0;
 	}
 	a.classList.remove('loader');
 	thumbLoader(updrefresh);
-}
+};
 	
 
 const getFresh = (kwd, el, mt, n)=>{
 	if(!el){el = _id('sorter');}
 	el.classList.add('loader');
-	console.log('getFresh',n,kwd);
 	const loadtoast = toast('Loading: '+(n||kwd),{timeout:0,theme:'black',click:()=>{}, prep:1});
 
 	post({
@@ -3600,7 +3581,6 @@ const searchList = async (i,el,kwd) => {
 
 
 async function dirList(i,el,kwd){
-console.log(i);
 	kwd = i.d;
 	if(!kwd || !(/^\d+$/.test(kwd))){
 		kwd = Dir.home;
@@ -3612,7 +3592,6 @@ console.log(i);
 		_qs('body').classList.remove('search');
 	}
 	if(!Dir.d[kwd]){toast('Invalid dir '+kwd);return false;}
-	console.log(kwd, kwd.length, navi.mval, navi.issort)
 	if(kwd != navi.mval || navi.issort){
 		if(!navi.issort){navi.ticked={};}
 		if(kwd.length){
@@ -3620,7 +3599,6 @@ console.log(i);
 			if(!navi.reload){
 				const f = await idbload('d',kwd).catch(e=>{});
 				mt = f? f.mt : 0;
-	console.log(mt , Dir.d[kwd][2],kwd, navi.mval, navi.issort)
 				if(mt && mt === Dir.d[kwd][2]){return media(f);}
 			}
 			getFresh(kwd, el, mt, Dir.d[kwd][0]);
@@ -3658,7 +3636,7 @@ async function genPage(i,el){
 }
 
 
-function imld() {
+function imld(){
 	const a = this.parentElement;
 	a.classList.add("loaded");
 }
@@ -3666,8 +3644,8 @@ function imld() {
 function rightMenu(ah,i){
 	_on(ah, 'contextmenu', (e) => cMenu(e, ah, i));
 	_on(ah, 'touchstart', (e) => {
-		if (e.touches.length === 1) {
-			navi.longpress = setTimeout(function() {
+		if(e.touches.length === 1){
+			navi.longpress = setTimeout(function(){
 				cMenu(e, ah, i);
 			}, 500);
 		}
@@ -3677,17 +3655,16 @@ function rightMenu(ah,i){
 }
 
 async function media(j, n, f, m ){
-	console.log(f);
 	if(Array.isArray(j.fds)){
 		j.fds = j.ids.reduce((a,k,i) => {a[k] = j.fds[i];return a;},{});
 	}
 
 	navi.mval = j.key;
 	navi.issort = 0;
-	navi.dir = (navi.mode=='d')? parseInt(navi.mval,10) : 0
+	navi.dir = (navi.mode=='d')? parseInt(navi.mval,10) : 0;
 	
 	f = j.fds;
-	for (const k in f){
+	for(const k in f){
 		f[k].w = (f[k].w || 0);
 		f[k].h = (f[k].h || 0);
 		f[k].r = (f[k].w || 0) * (f[k].h || 0);
@@ -3714,17 +3691,16 @@ async function media(j, n, f, m ){
 		_id('header').classList.remove('inside');
 	}else if(navi.mode=='a'){
 		if(navi.mval === 'Albums'){
-			for (const a in Dir.a) {
+			for(const a in Dir.a){
 				const [id, name, qt, mt, own, family, share] = Dir.a[a];
-				const u = getUrlID({a: id, n: name})
+				const u = getUrlID({a: id, n: name});
 				const ah = _ce('a');
 				_att(ah,'href',u.url);
 				_att(ah,'data-aid',id);
 				ah.onclick = genPage.bind(this, u, ah);
 				const im = _ce('img');
 				_att(im,'loading','lazy');
-				im.onload = ()=>{im.className='sh';ah.classList.add("loaded")};
-				//im.onerror = ()=>{im.remove();};
+				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
 				if(qt){
 					im.src = window.location.pathname + '?athmb='+id+'&mt='+mt;
 				}
@@ -3745,16 +3721,15 @@ async function media(j, n, f, m ){
 		}
 	}else if(navi.mode=='t'){
 		if(navi.mval === 'Timeline'){
-			for (const t in j.i) {
-				const u = getUrlID({t: t})
+			for(const t in j.i){
+				const u = getUrlID({t: t});
 				const ah = _ce('a');
 				_att(ah,'href',u.url);
 				ah.onclick = genPage.bind(this,u, ah);
 				const im = _ce('img');
 				_att(im,'loading','lazy');
-				im.onload = ()=>{im.className='sh';ah.classList.add("loaded")};
-				//im.onerror = ()=>{im.remove();};
-				im.src = window.location.pathname + '?tthmb='+t+'&mt='+Dir.m
+				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
+				im.src = window.location.pathname + '?tthmb='+t+'&mt='+Dir.m;
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
 				const fo = _ce('div');
@@ -3779,16 +3754,15 @@ async function media(j, n, f, m ){
 	}else if(navi.mode=='k'){
 		if(navi.mval === 'Tags'){
 
-			for (const k in j.i[1]) {
-				const u = getUrlID({k: k})
+			for(const k in j.i[1]){
+				const u = getUrlID({k: k});
 				const ah = _ce('a');
 				_att(ah,'href',u.url);
 				ah.onclick = genPage.bind(this,u, ah);
 				const im = _ce('img');
 				_att(im,'loading','lazy');
-				im.onload = ()=>{im.className='sh';ah.classList.add("loaded")};
-				//im.onerror = ()=>{im.remove();};
-				im.src = window.location.pathname + '?kthmb='+encodeURIComponent(k)+'&mt='+Dir.m
+				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
+				im.src = window.location.pathname + '?kthmb='+encodeURIComponent(k)+'&mt='+Dir.m;
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
 				const fo = _ce('div');
@@ -3802,13 +3776,13 @@ async function media(j, n, f, m ){
 				tQt++;
 			}
 			g.appendChild(_ce('br'));
-			for (const k in j.i[0]) {
-				const u = getUrlID({k: k})
+			for(const k in j.i[0]){
+				const u = getUrlID({k: k});
 				const ah = _ce('a');
 				_att(ah,'href',u.url);
 				ah.onclick = genPage.bind(this,u, ah);
 				ah.textContent = k + ' ('+j.i[0][k]+')';
-				ah.classList.add("loaded")
+				ah.classList.add("loaded");
 				g.appendChild(ah);
 				tQt++;
 			}
@@ -3817,7 +3791,6 @@ async function media(j, n, f, m ){
 			
 		}
 	}else if(navi.mode=='d'){
-		console.log(navi.dir, Dir.d[navi.dir]);
 		const [dirpath, pid, mt, sz, qt] = Dir.d[navi.dir];
 		tSz = sz; tQt = qt;
 		const tl = (dirpath.length)? dirpath :  _p.url_pictures + '/';
@@ -3848,7 +3821,7 @@ async function media(j, n, f, m ){
 			}
 		}
 	
-		for (const d of foldersort) {
+		for(const d of foldersort){
 			const id = parseInt(d,10);
 			const [dirpath, pid, mt, sz, qt] = Dir.d[id];
 			
@@ -3862,9 +3835,9 @@ async function media(j, n, f, m ){
 			if(qt){
 				const im = _ce('img');
 				_att(im,'loading','lazy');
-				im.onload = ()=>{im.className='sh';ah.classList.add("loaded")};
+				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
 				im.onerror = ()=>{im.remove();};
-				im.src = window.location.pathname + '?fthmb='+id+'&mt='+mt
+				im.src = window.location.pathname + '?fthmb='+id+'&mt='+mt;
 				fldd.appendChild(im);
 			}
 			fldr.appendChild(fldd);
@@ -3926,7 +3899,7 @@ async function media(j, n, f, m ){
 	
 	let updrefresh = 0;
 	navi.thumbs = [];
-	for (const k of filesort){
+	for(const k of filesort){
 		const v = f[k];
 		if(!v.d){v.d = navi.dir;}
 		if(navi.mode!=='d'){tQt++; tSz += v.s;}
@@ -3937,7 +3910,7 @@ async function media(j, n, f, m ){
 		let p = Dir.d[v.d][0];
 		if(p !== ''){p+='/';}
 		p =(p + v.n).split('/').map(y => encodeURIComponent(y)).join('/');
-		let url = _p.url_pictures + '/' + p + '?mt='+v.m;;
+		let url = _p.url_pictures + '/' + p + '?mt='+v.m;
 		
 		const ext = getExt(v.n).toLowerCase();
 		
@@ -3987,7 +3960,7 @@ async function media(j, n, f, m ){
 		fo.appendChild(fnm);
 		
 		const fmt = _ce('f-mt');
-		fmt.textContent = relativeDate(v.m);
+		fmt.textContent = relativeDate(v.t);
 		fo.appendChild(fmt);
 
 		const fsz = _ce('f-sz');
@@ -4180,17 +4153,17 @@ let lightbox;
 		const autoHideUI = new PhotoSwipeAutoHideUI(lightbox, {idleTime: _p.auto_hide_slideshow_ui * 1000});
 	}
 
-	lightbox.on('uiRegister', function() {
+	lightbox.on('uiRegister', function(){
 		
 		//transition
 		const trans = (i) => {
 			const p = lightbox.pswp;
 			const j = p.potentialIndex;
 			i = p.getLoopedIndex(j + i);
-			if (p.mainScroll.moveIndexBy(i - j, true)) {
+			if(p.mainScroll.moveIndexBy(i - j, true)){
 				p.dispatch('afterGoto');
 			}
-		}
+		};
 		lightbox.pswp.next = () => trans(1);
 		lightbox.pswp.prev = () => trans(-1);
 
@@ -4205,7 +4178,7 @@ let lightbox;
 			onInit: (el, pswp) => {
 				pswp.on('change', () => {
 					let x=pswp.currSlide.data.element;
-					for (const i of ['data-tick','data-d','data-i','data-s','href']){
+					for(const i of ['data-tick','data-d','data-i','data-s','href']){
 						_att(el, i, _att(x,i));
 					}
 					const exn = _qs('f-nm',el);
@@ -4213,7 +4186,7 @@ let lightbox;
 					const fnm = _qs('f-nm',x).cloneNode(true);
 					el.appendChild(fnm);
 					el.classList.add('loaded');
-					_qs('i',el).onclick = tickShow
+					_qs('i',el).onclick = tickShow;
 				});
 			}
 		});
@@ -4266,11 +4239,11 @@ let lightbox;
 	
 	history.scrollRestoration = "manual";
 
-	for (const tb in db) {
-		if (!('indexedDB' in window)) {break;}
+	for(const tb in db){
+		if(!('indexedDB' in window)){break;}
 		if(tb=='zb'){continue;}
 		try{db[tb] = await mydb(tb);}catch(e){console.error(e);break;}
-	};
+	}
 	
 	updateDirSize();
 
@@ -4280,9 +4253,9 @@ let lightbox;
 	await db.conf.get('scroll',{}).then(r=>{if(r){navi.scroll = r;}}).catch(e=>{});
 	
 	if(_p.can.delete){
-		_on(document, 'keyup', function(e) {
+		_on(document, 'keyup', function(e){
 			const key = e.key || e.keyCode;
-			if ((key === 'Delete' || key === 46) && lightbox.pswp) {
+			if((key === 'Delete' || key === 46) && lightbox.pswp){
 				const q = _qs('.pswp .ticker');
 				if(q){q.click();}
 			}
@@ -4297,20 +4270,20 @@ let lightbox;
 		if(navi.cm.open){hideContextMenu();}
 	};
 
-	_on(document,'scroll', function(e) {
-		if (navi.cm.open && Math.abs(window.scrollY - navi.cm.pos) > 50) {
+	_on(document,'scroll', function(e){
+		if(navi.cm.open && Math.abs(window.scrollY - navi.cm.pos) > 50){
 			hideContextMenu(e);
 		}
 	});
 	
-	_on(window, 'scroll', function() {
+	_on(window, 'scroll', function(){
 		const curr = window.pageYOffset;
 		backupScroll();
-		if (curr > 48 && curr > navi.pscroll) {
+		if(curr > 48 && curr > navi.pscroll){
 			if(!navi.side){
 				topbar(0);
 			}
-		} else {
+		}else{
 				topbar(1);
 		}
 		navi.pscroll = curr <= 0 ? 0 : curr;
@@ -4318,19 +4291,19 @@ let lightbox;
 
 
 	_qsa('main,#breadcrumbs,#selectbar,#title,#srchf,#topbar .rbtn:not(:first-child)').forEach(function(el){
-		 _on(el, 'click', function(e) {
+		 _on(el, 'click', function(e){
 			if(navi.side||navi.cm.open){
 				e.stopPropagation();
 				e.preventDefault();
 				sidebar(0);
 				hideContextMenu();
 			}
-			if (!e.target.closest("#header")) {
+			if(!e.target.closest("#header")){
 				_id('header').classList.remove('inside');
 			}else{
 				_id('header').classList.add('inside');
 			}
-		},true)
+		},true);
 	 });
 
 
@@ -4367,25 +4340,25 @@ let lightbox;
 			hideContextMenu();
 		});
 
-		if(document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+		if(document.fullscreenEnabled || document.webkitFullscreenEnabled){
 			const b = _qs('#fscreen i');
 
 			const handleFullscreen = () => {
 				let i = 'max';
-				if(document.fullscreen || document.webkitFullscreenElement) {
+				if(document.fullscreen || document.webkitFullscreenElement){
 					i = 'min';
 				}
 				b.className = 'ico-' + i;
-			}
+			};
 			
 			_on(b,'click', ()=>{
-				if(document.fullscreen) {
+				if(document.fullscreen){
 					document.exitFullscreen();
-				} else if(document.webkitFullscreenElement) {
-					document.webkitCancelFullScreen()
-				} else if(document.documentElement.requestFullscreen) {
+				}else if(document.webkitFullscreenElement){
+					document.webkitCancelFullScreen();
+				}else if(document.documentElement.requestFullscreen){
 					document.documentElement.requestFullscreen();
-				} else {
+				}else{
 					document.documentElement.webkitRequestFullScreen();
 				}
 				b.blur();
@@ -4407,7 +4380,7 @@ let lightbox;
 		window.onhashchange = (e)=>{
 			if(navi.edit){navi.backbtn = 1; _id("tclose").click(); return;}
 			const {pswp} = lightbox;
-			if (typeof pswp==="object" && pswp.isOpen) {
+			if(typeof pswp==="object" && pswp.isOpen){
 				navi.backbtn = 1;
 				pswp.close();
 
@@ -4430,7 +4403,3 @@ let lightbox;
 	}
 	
 })();
-
-
-
-
