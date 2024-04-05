@@ -1,7 +1,7 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['1.0.1','1,1']; //[main, [config,db]]
+const PIC_VER = ['1.0.2','1,1']; //[main, [config,db]]
 
 if(get('sf')){sfile(get('sf'));}
 
