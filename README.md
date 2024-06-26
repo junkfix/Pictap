@@ -92,4 +92,12 @@ WEBROOT
 * Auto upload for mobile (when PWA can remember directory permission across the sessions)
 * Support Mysql/Postgres database engines
 
+### Screenshots
 
+![](/screenshots/screenshot1.jpg?raw=true)
+
+![](/screenshots/screenshot2.jpg?raw=true)
+
+![](/screenshots/screenshot3.jpg?raw=true)
+
+![](/screenshots/screenshot4.jpg?raw=true)
