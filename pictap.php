@@ -1,7 +1,7 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['1.0.2','1,1']; //[main, [config,db]]
+const PIC_VER = ['1.0.3','1,1']; //[main, [config,db]]
 
 if(get('sf')){sfile(get('sf'));}
 
@@ -732,7 +732,7 @@ function scanFolder($dir,$force=0){
 				if(!empty($old[$filename]['fileid'])){
 					$cfid = $old[$filename]['fileid'];
 					$tn = thumb_name(joinp($dirs['dir'],$filename));
-					if($old[$filename]['th']==0 && !file_exists(PICTAP->path_thumbs . $tn)){
+					if($old[$filename]['th']==0 && $ft>0 && !file_exists(PICTAP->path_thumbs . $tn)){
 						logger('Missing thumb '.$tn);
 						updateFile($cfid, ['th'=>2]);
 					}
@@ -1170,7 +1170,7 @@ function procUpload(){
 		$filename = sanitise_name($file['name'][$i]);
 		$p = splitExt($filename);
 		$ext = $p[2];
-		if(
+		if( (in_array($ext, PICTAP->ext_nouploads) && !userCan('admin')) || 
 			!in_array($ext, PICTAP->ext_images) &&
 			!in_array($ext, PICTAP->ext_videos) &&
 			!in_array($ext, PICTAP->ext_uploads) &&
@@ -1198,7 +1198,7 @@ function procUpload(){
 			continue;
 			}
 		}
-		
+		ignore_user_abort(true);
 		$res = move_uploaded_file($file['tmp_name'][$i], $dirpath.'/'.$filename);
 		if($res){
 			$mtime=get('mtime');
@@ -1781,6 +1781,7 @@ function pageConfig($oldsetup){
 		'ext_images' 	=> ['text', 'jpg,jpeg,png,gif,webp,bmp,avif,tiff,tif,wbmp,xbm', 1, 'eg. jpg,png'],
 		'ext_videos' 	=> ['text', 'mp4,m4v,m4p,webm,ogv,mkv,avi,mov,wmv,mpg,mpeg,vob', 0, 'eg. mp4,mov'],
 		'ext_uploads' 	=> ['text', 'pdf,doc,docx,txt', 0, 'Allowed extra upload types eg. pdf,txt or * for all'],
+		'ext_nouploads' 	=> ['text', 'php,pl,cgi,sh', 0, 'Disable upload types for non admin eg. php,pl,cgi,sh'],
 		'exclude_dirs' 	=> ['text', '', 0,'Regex for preg_match eg. <code>/\/bank|\/house(\/|$)/i</code> to exclude bank* or /house/* dirs'],
 		'exclude_files' => ['text', '', 0,'Regex for preg_match eg. <code>/\.(gif|png)$/i</code> to exclude .gif/.png files'],
 		'folder_thumb' 	=> ['text', '', 0,'Default Folder Thumbnail (optional) eg. folder.jpg'],
@@ -1811,7 +1812,7 @@ function pageConfig($oldsetup){
 				}
 			}
 		}
-		foreach(['images','videos','uploads'] as $s){
+		foreach(['images','videos','uploads','nouploads'] as $s){
 			$input['ext_'.$s] = explode(',',$input['ext_'.$s]);
 		}
 		
@@ -2484,11 +2485,11 @@ if(post('task')){
 			$new_path = dirname($path) . '/' . $newname;
 			$ext = splitExt($newname)[2];
 			
-			if($newname === '' || (
+			if($newname === '' || (in_array($ext, PICTAP->ext_nouploads) && !userCan('admin')) || (
 				!in_array($ext, PICTAP->ext_images) &&
 				!in_array($ext, PICTAP->ext_videos)
 			)){
-				sendjs(0,"Invalid name ".post('new'));
+				sendjs(0,"Not Allowed ".post('new'));
 			}
 			if(file_exists($new_path)){
 				sendjs(0,"Already exists ".post('new'));
