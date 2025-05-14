@@ -41,13 +41,16 @@ Unlike other online solutions, Pictap is tailored specifically for home users se
 * **Context Menus:** Access context menus for quick actions.
 * **Recycle Bin:** Optionally enable a recycle folder to store deleted media.
 * **Lightweight and Self-Contained:** Pictap has minimal dependencies, single php/js/css, requiring only around 300KB of space, along with an additional 2MB for the GPS database sourced from [SimpleMaps](https://simplemaps.com/).
-* **Minimal Disk usage:** In our test of 1.4TB of 72000 media, the database size is 11MB, the thumbnail folder is 890MB, does not create any other sizes for now and uses original images for full size view, it maximizes space efficiency by employing the WebP format for thumbnails, offering both space-saving benefits and animated thumbnail capabilities.
+* **Minimal Disk usage:** In our test of 1.4TB of 72000 media, the sqlite database size is 11MB, the thumbnail folder is 890MB, does not create any other sizes for now and uses original images for full size view, it maximizes space efficiency by employing the WebP format for thumbnails, offering both space-saving benefits and animated thumbnail capabilities.
 
 ## Minimum Requirements:
 
-* **PHP 8+** with sqlite3 database support
-* **Linux Environment:** Tested on Debian (Raspberry PI bullseye).
-* **Binaries:** Requires ffmpeg, exiftool, and jpegtran binaries. `sudo apt install ffmpeg exiftool libjpeg-progs`
+* **PHP 8+** supported databases are PostgreSQL/MySQL/Sqlite3
+* **Linux/Windows Environment:** Tested on Debian (Raspberry PI bullseye) and Windows 11.
+* **Binaries:** 
+  * **Linux:** Requires ffmpeg, exiftool, and jpegtran binaries. `sudo apt install ffmpeg exiftool libjpeg-progs`.
+  * **Windows:** Requires ffmpeg.exe, exiftool.exe, and jpegtran.exe binaries. [ffmpeg-master-latest-win64-gpl.zip
+](https://github.com/BtbN/FFmpeg-Builds/releases), [exiftool](https://exiftool.org/) rename exiftool(-k).exe to exiftool.exe, [jpegtran](https://jpegclub.org/jpegtran/)
 * **Web Server:** nginx (or Apache) with optional SSL support for the PWA web app.
 * **Optional TensorFlow Setup:** Required only if utilising image classification keywords.
 
@@ -60,7 +63,7 @@ WEBROOT
 ├─ /data (Sensitive data can stored outside webroot or protect using server config)
 │  ├─ /auth (Stores login sessions for user authentication)
 │  ├─ /badip (Prevents brute force login attacks by storing blocked IP addresses)
-│  ├─ /pictap.db (Main sqlite database, automatically generated on initial setup)
+│  ├─ /pictap.db (For sqlite database only, automatically generated on initial setup)
 │  ├─ /keywords.* (Script for TensorFlow keyword extraction via CLI)
 ├─ pictap.php (Main PHP file; can be renamed for customisation)
 ├─ share.php (For public album sharing functionality)
@@ -90,7 +93,7 @@ WEBROOT
 * Convert other image formats (eg. HEIC) to jpg
 * Create cron tasks to monitor changes in the image folder
 * Auto upload for mobile (when PWA can remember directory permission across the sessions)
-* Support Mysql/Postgres database engines
+* ~Support Mysql/Postgres database engines~
 
 ### Screenshots
 
