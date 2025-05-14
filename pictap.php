@@ -221,7 +221,7 @@ class MyDB {
 		return false;
 	}
 	public function __destruct() {
-		$this->close();
+		if($this->conn){$this->close();$this->conn = null;}
 	}
 }
 
