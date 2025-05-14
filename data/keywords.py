@@ -1,10 +1,20 @@
 '''
+create venv
+python3 -m venv ~/.local --system-site-packages
+make sure echo $PATH has ~/.local/bin or edit in ~/.profile
+
 sudo apt install libhdf5-dev
-pip install h5py
-pip install Pillow
-pip install flatbuffers==23.5.26
-pip install tensorflow
-pip install keras
+pip install h5py Pillow flatbuffers==23.5.26 tensorflow keras
+
+for mysql:
+pip install mysql-connector-python
+
+for postgresql:
+sudo apt install libpq-dev
+pip install --upgrade psycopg2-binary
+or
+pip install psycopg2
+
 
 Usage: python keywords.py /somepath/pictap_config.php
 
@@ -13,7 +23,6 @@ import os
 import sys
 import time
 import tempfile
-import sqlite3
 import json
 
 def jsonfile(file_path):
@@ -38,16 +47,32 @@ def multirun(lock_file):
         sys.exit(1)
 
 def is_image(f):
-    x = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif'}
+    x = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.webp'}
     return any(f.lower().endswith(ext) for ext in x)
 
-def save_db(cursor, r, tagtable):
+def save_db(cursor, r, tagtable, config):
+    
+    ph = '%s'    
+    b = ''
+    e = ';'
+    if config['db_type'] == 'pgsql':
+        e = ' ON CONFLICT DO NOTHING;'
+    else:
+        if config['db_type'] == 'sqlite':
+            ph = '?'
+            b = 'OR '
+        b = 'IGNORE ' + b
+    b = 'INSERT ' + b
 
     for kw, t in tagtable.items():
-        cursor.execute("INSERT OR IGNORE INTO tags (tag, cat) VALUES(?, ?);", (kw, t))
-        cursor.execute("INSERT OR IGNORE INTO tagfiles (fileid, tagid) VALUES (?, (SELECT tagid FROM tags WHERE tag = ? COLLATE NOCASE));", (r['fileid'], kw));
-
-    cursor.execute("UPDATE files SET kw = 1 WHERE fileid = ?",(r['fileid'],))
+        q = f"{b}INTO {config['db_prefix']}tags (tag, cat) VALUES({ph}, {ph}) {e}"
+        cursor.execute(q, (kw, t))
+        
+        q = f"{b}INTO {config['db_prefix']}tagfiles (fileid, tagid) VALUES ({ph}, (SELECT tagid FROM {config['db_prefix']}tags WHERE lower(tag) = lower({ph}))){e}"
+        cursor.execute(q, (r['fileid'], kw));
+        
+    q = f"UPDATE {config['db_prefix']}files SET kw = 1 WHERE fileid = {ph};"
+    cursor.execute(q,(r['fileid'],))
     cursor.connection.commit()
     
 def main():
@@ -73,17 +98,44 @@ def main():
     if not z:
         print("json error ",kwdfile)
         exit()
-        
-    conn = sqlite3.connect(config['db_file'])
-    conn.execute("PRAGMA foreign_keys = 1")
-    conn.row_factory = sqlite3.Row
-    #conn.autocommit = True
-    cursor = conn.cursor()
+    
+    conn = None
+    cursor = None
+    
+    conn_args = {
+        'host': config['db_host'],
+        'user': config['db_user'],
+        'password': config['db_pass']
+    }
+    port = config.get('port')
+    if port and int(port) != 0:
+        conn_args['port'] = int(port)
+    
+    if config['db_type'] == 'pgsql':
+        import psycopg2
+        import psycopg2.extras
+        conn_args['dbname'] = config['db_name']
+        conn = psycopg2.connect(**conn_args)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    elif config['db_type'] == 'mysql':
+        import mysql.connector
+        conn_args['database'] = config['db_name']
+        conn = mysql.connector.connect(**conn_args)
+        cursor = conn.cursor(dictionary=True)
+
+    else:  # SQLite
+        import sqlite3
+        conn = sqlite3.connect(config['db_file'])
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        cursor = conn.cursor()
+    
 
     folder = config['path_pictures']
     
     try:
-        cursor.execute('SELECT f.fileid, d.dir, f.file FROM dirs d JOIN files f ON d.dirid = f.dirid WHERE f.kw = 0')
+        cursor.execute(f"SELECT f.fileid, d.dir, f.file FROM {config['db_prefix']}dirs d JOIN {config['db_prefix']}files f ON d.dirid = f.dirid WHERE f.kw = 0")
         results = cursor.fetchall()
     except Exception as e:
         print(f"Error: {e}")
@@ -115,14 +167,14 @@ def main():
         #rawdata[img_path] = []
         
         if not is_image(r['file']):
-            save_db(cursor, r, tagtable)
+            save_db(cursor, r, tagtable, config)
             continue
         
         try:
             img = image.load_img(img_path, target_size=(224, 224))
         except Exception as e:
             print(f"Error loading the image: {e}")
-            save_db(cursor, r, tagtable)
+            save_db(cursor, r, tagtable, config)
             continue
 
         img = image.img_to_array(img)
@@ -133,7 +185,7 @@ def main():
             predictions = model.predict(img, verbose=0)
         except Exception as e:
             print(f"Error making predictions: {e}")
-            #save_db(cursor, r, tagtable)
+            #save_db(cursor, r, tagtable, config)
             continue
 
         foundtags = decode_predictions(predictions)
@@ -184,7 +236,7 @@ def main():
                 c = c[0].upper() + c[1:]
                 tagtable[c]=0
         
-        save_db(cursor, r, tagtable)
+        save_db(cursor, r, tagtable, config)
         
     conn.close()
 
