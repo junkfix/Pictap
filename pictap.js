@@ -1,4 +1,4 @@
-/*! Pictap Gallery 1.0.1
+/*! Pictap Gallery 2.0.0
 https://github.com/junkfix/Pictap */
 
 
@@ -120,9 +120,9 @@ const _qs = (q, el) => (el || document).querySelector(q);
 const _qsa = (q, el) => Array.from((el || document).querySelectorAll(q));
 const _ce = (t) => document.createElement(t);
 
-const _on = (el, type, fn, opt) => {el.addEventListener(type, fn, opt);};
+const _on = (el, ev, fn, opt) => ev.split(' ').forEach(e => el.addEventListener(e, fn, opt));
 
-const _off = (el, type, fn) => {el.removeEventListener(type, fn);};
+const _off = (el, ev, fn) => ev.split(' ').forEach(e => el.removeEventListener(e, fn));
 
 const wait = (ms, fn) => {setTimeout(fn, ms);};
 
@@ -876,6 +876,7 @@ async function act_upload(hide,appup){
 				}
 			}else{
 				failed.push(up.List[0]);
+				toast("Error "+up.xhr.status,{theme:'red',timeout:0,close:1});
 			}
 			upBar(el,p);
 			up.List.shift();
@@ -921,7 +922,7 @@ async function act_upload(hide,appup){
 	//_att(f, 'accept', 'image/*, video/*');
 	_att(f, 'multiple', '');
 	//_att(f, 'webkitdirectory', '');
-	f.addEventListener('change', (e) => {addItem(e.target.files,1);});
+	_on(f,'change', (e) => {addItem(e.target.files,1);});
 	p1.appendChild(f);
 	
 	
@@ -2758,6 +2759,7 @@ function act_rename(id){
 		],
 		bgclose: 0
 	});
+	_id('popinput').focus();
 	
 }
 
@@ -3004,7 +3006,7 @@ function editAlb(aid,make,add){
 								if(!aid){
 									toast('Album Created: '+an.value);
 									if(add){
-										imageAlb(1,0,j.msg);
+										wait(300,()=>{imageAlb(1,0,j.msg);});
 										return;
 									}
 								}
@@ -4054,7 +4056,7 @@ async function media(j, n, f, m ){
 		updHist(1,m);	
 	}
 	navi.lasturl = m.url;
-	_id('sizes').innerHTML = tQt + ' Files · '+ filesize(tSz);
+	_id('sizes').innerHTML = tQt + ' Files'+ ((['Albums','Timeline','Tags'].includes(navi.mval))? '': ' · '+filesize(tSz));
 	
 	document.title = tTl  + ' ('+ tQt + ' Files)';
 	_id('sorter').className = 'ico-' + rule.by + rule.az;
@@ -4064,7 +4066,20 @@ async function media(j, n, f, m ){
 
 
 
-
+function dbSetup(e){
+	let x = _id('db_type'); let d=x.value;
+	let f = {host:0,port:0,user:0,pass:0,schema:0,name:0,file:1};
+	if(d != 'sqlite'){
+		f.host=1; f.port=1; f.user=1; f.pass=1; f.name=1; f.file=0;
+	}
+	if(d == 'pgsql'){f.schema=1;}
+	Object.keys(f).forEach(w=>{
+		let m=_id('db_'+w).closest('p');
+		m.classList.add('hide');		
+		if(f[w]){m.classList.remove('hide');}
+	});
+	if(e===0){x.onchange = dbSetup;console.log('x');}
+}
 
 
 
@@ -4105,7 +4120,7 @@ function maplink(c){
 
 let lightbox;
 
-(async ()=>{
+async function picT() {
 	if(typeof startUp === 'undefined'){return;}
 
 	lightbox = new PhotoSwipeLightbox({
@@ -4402,4 +4417,8 @@ let lightbox;
 		
 	}
 	
-})();
+}
+
+
+
+
