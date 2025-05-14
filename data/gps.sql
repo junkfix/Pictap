@@ -1,4 +1,4 @@
-INSERT INTO countries (countryid,country) VALUES
+INSERT /*P*/ INTO /*#*/countries (countryid,country) VALUES
 (1,'Afghanistan'),
 (2,'Albania'),
 (3,'Algeria'),
@@ -238,8 +238,8 @@ INSERT INTO countries (countryid,country) VALUES
 (237,'West Bank'),
 (238,'Yemen'),
 (239,'Zambia'),
-(240,'Zimbabwe');
-INSERT INTO states (stateid,state) VALUES
+(240,'Zimbabwe') /*S*/;
+INSERT /*P*/ INTO /*#*/states (stateid,state) VALUES
 (1,'Badakhshan'),
 (2,'Badghis'),
 (3,'Baghlan'),
@@ -4255,8 +4255,8 @@ INSERT INTO states (stateid,state) VALUES
 (4013,'Masvingo'),
 (4014,'Matabeleland North'),
 (4015,'Matabeleland South'),
-(4016,'Midlands');
-INSERT INTO locations (countryid,stateid,lat,lon,location) VALUES
+(4016,'Midlands') /*S*/;
+INSERT /*P*/ INTO /*#*/locations (countryid,stateid,lat,lon,location) VALUES
 (1,1,37.1166,70.58,'Faizabad'),
 (1,1,37.6167,71.45,'Sheghnan'),
 (1,2,34.9867,63.1292,'Qal''ah-ye Now'),
@@ -48822,6 +48822,4 @@ INSERT INTO locations (countryid,stateid,lat,lon,location) VALUES
 (240,4016,-19.6667,30.0,'Shurugwi'),
 (240,4016,-19.4614,29.8022,'Gweru'),
 (240,4016,-19.0333,29.7833,'Redcliff'),
-(240,4016,-18.9167,29.8167,'Kwekwe');
-PRAGMA optimize;
-VACUUM;
+(240,4016,-18.9167,29.8167,'Kwekwe') /*S*/;
