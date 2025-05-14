@@ -1526,6 +1526,7 @@ function saveLogin($f){
 
 function userAuth($html=0){
 	if(!empty(PICTAP->timezone)){date_default_timezone_set(PICTAP->timezone);}
+	if(empty(PICTAP->cookie)){PICTAP->cookie = 'pictap';}//to be removed
 	if(logger()) {
 		$user = getUser(PICTAP->users[1][0]);
 		define('USER', $user);
