@@ -117,6 +117,9 @@ def main():
         conn_args['dbname'] = config['db_name']
         conn = psycopg2.connect(**conn_args)
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if config['db_schema']:
+            cursor.execute(f"SET search_path TO {config['db_schema']}")
+            cursor.connection.commit()
 
     elif config['db_type'] == 'mysql':
         import mysql.connector
@@ -128,8 +131,9 @@ def main():
         import sqlite3
         conn = sqlite3.connect(config['db_file'])
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
         cursor = conn.cursor()
+        cursor.execute("PRAGMA foreign_keys = ON")
+        cursor.connection.commit()
     
 
     folder = config['path_pictures']
