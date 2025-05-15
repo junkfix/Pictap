@@ -107,9 +107,9 @@ def main():
         'user': config['db_user'],
         'password': config['db_pass']
     }
-    port = config.get('port')
-    if port and int(port) != 0:
-        conn_args['port'] = int(port)
+    port = int(config['db_port'] or 0)
+    if port:
+        conn_args['port'] = port
     
     if config['db_type'] == 'pgsql':
         import psycopg2
