@@ -3,12 +3,62 @@
 
 const PIC_VER = ['2.0.0',2]; //[main, config]]
 
+define('PTM', $ptset ?? 1);
 if(get('sf')){sfile(get('sf'));}
 
-@ini_set('memory_limit', '512M');
-@ini_set('max_execution_time', '0');
-@ini_set('max_input_time', '-1');
+if(!is_array($setup=myConfig())){
+	$setup=['version'=>[0,0], 'db_setup'=>0, 'salt'=>bin2hex(random_bytes(8))];
+}
 
+$setup = (object) $setup;
+define('PICTAP', $setup );
+define('ROLES', (object)roleList());
+
+if(PTM){
+	if($setup->version[1] != PIC_VER[1]){
+		if(property_exists($setup,'users')){
+			userAuth(true);
+		}
+		pageConfig($setup);
+	}
+	
+	@ini_set('memory_limit', '512M');
+	@ini_set('max_execution_time', '0');
+	@ini_set('max_input_time', '-1');
+
+	if(post('task')){
+		postTasks();
+	}else{
+		getTasks();
+	}
+}else{
+	$a = get('a');
+	if(!$a || empty(PICTAP->db_setup)){die;}
+
+	if(!($dbo = openDb()) ||
+	($stmt = $dbo->run("SELECT f.fileid, a.name, f.file, f.w, f.h, f.ft, f.mt, f.dur FROM ".PICTAP->db_prefix."albums a 
+	INNER JOIN ".PICTAP->db_prefix."albumfiles af USING (albumid)
+	INNER JOIN ".PICTAP->db_prefix."files f USING (fileid)
+	WHERE share = ? ORDER BY f.tk ASC", [$a], 2, __LINE__)) === false){die;}
+	$stmt = $stmt ?: [];
+	$an = '';
+	$i = 0;
+	$q = [
+		'url'=>PICTAP->url_shared.'/'.rawurlencode($a).'/',
+		'items'=>[]
+	];
+	foreach ($stmt as $r) {
+		$an = htmlspecialchars($r['name']);
+		unset($r['name']);
+		$q['items'][] = $r;
+		$i++;
+		
+	}
+	if(!$i){http_response_code(404);die;}
+	$an = "$an ($i)";
+
+	htmldoc($an, json_encode($q));	
+}
 
 function myConfig($save=0){
 	$f = dirnm(__FILE__) .'/pictap_config.php';
@@ -28,17 +78,6 @@ function myConfig($save=0){
 	return $c;
 }
 
-$setup=myConfig();
-
-if(!is_array($setup)){
-	$setup=['version'=>[0,0], 'db_setup'=>0, 'salt'=>bin2hex(random_bytes(8))];
-}
-
-$setup = (object) $setup;
-define( 'PICTAP', $setup );
-
-
-define( 'ROLES', (object)roleList());
 
 class MyDB {
 	private $conn = null;
@@ -183,8 +222,7 @@ class MyDB {
 					return $result;
 
 				default:
-					$stmt = $this->conn->prepare($q);
-					if (!$stmt) return false;
+					$stmt = $this->conn->prepare($q) or throw new Exception("prepare failed");
 					if (!empty($args)) {
 						foreach ($args as $i => $p) {
 							$stmt->bindValue($i + 1, $p);
@@ -246,12 +284,6 @@ function openDb($db=0){
 	return $dbo;
 }
 
-if($setup->version[1] != PIC_VER[1]){
-	if(property_exists($setup,'users')){
-		userAuth(true);
-	}
-	pageConfig($setup);
-}
 
 function logger($msg='', $level=3){
 	$cli = (php_sapi_name() == 'cli');
@@ -264,7 +296,7 @@ function logger($msg='', $level=3){
 }
 
 //command line
-if (logger()) {
+if (PTM && logger()) {
 	set_time_limit(0);
 	userAuth();
 
@@ -375,8 +407,11 @@ function getDirID($n, $insert=true){
 	if ($stmt) {
 		return $stmt;
 	} else if($insert){
-		if(($stmt = $dbo->run("SELECT CASE WHEN (SELECT COUNT(*) FROM $nt) - (SELECT MAX(dirid) FROM $nt) >= 10 THEN COALESCE( (SELECT MIN(t1.dirid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.dirid = t1.dirid + 1)), 1) ELSE (SELECT COALESCE(MAX(dirid), 0) + 1 FROM $nt) END AS did;", null, 1, __LINE__)) === false ||
-		$dbo->run("INSERT INTO $nt (dirid, dir) VALUES (?, ?)", [$stmt['did'], $name], 0, __LINE__) === false
+		if(($stmt = $dbo->run("SELECT CASE WHEN (SELECT MAX(dirid) FROM $nt) - (SELECT COUNT(*) FROM $nt) >= 10 THEN COALESCE( (SELECT MIN(t1.dirid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.dirid = t1.dirid + 1)), 1) ELSE (SELECT 0) END AS did;", null, 1, __LINE__)) === false){return false;}
+		$k = 'dir'; $p = '?'; $v = [$name];
+		if(!empty($stmt['did'])){$k .= ',dirid'; $p .= ',?';$v[] = $stmt['did'];}
+		[$pf, $sf] = ignoreSql();
+		if($dbo->run("INSERT $pf INTO $nt ($k) VALUES ($p) $sf;", $v, 0, __LINE__) === false
 		){return false;}
 		//$dirID=$dbo->lastInsertId();
 		return getDirID($n, false);
@@ -486,14 +521,14 @@ function insertFile($c, $file){
 	$nt = PICTAP->db_prefix."files";
 
 	if(!($dbo = openDb()) ||
-	($stmt = $dbo->run("SELECT CASE WHEN (SELECT COUNT(*) FROM $nt) - (SELECT MAX(fileid) FROM $nt) >= 10 THEN COALESCE( (SELECT MIN(t1.fileid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.fileid = t1.fileid + 1)), 1) ELSE (SELECT COALESCE(MAX(fileid), 0) + 1 FROM $nt) END AS fid;", null, 1, __LINE__)) === false){
+	($stmt = $dbo->run("SELECT CASE WHEN (SELECT MAX(fileid) FROM $nt) - (SELECT COUNT(*) FROM $nt) >= 30 THEN COALESCE( (SELECT MIN(t1.fileid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.fileid = t1.fileid + 1)), 1) ELSE (SELECT 0) END AS fid;", null, 1, __LINE__)) === false){
 		return false;
 	}
-	$c['fileid'] = (int)$stmt['fid'];
+	if(!empty($stmt['fid'])){$c['fileid'] = (int)$stmt['fid'];}
 
 	$v = implode(',', array_fill(0, count($c), '?'));
 
-	[$pf, $sf] = ignoreVars(PICTAP);
+	[$pf, $sf] = ignoreSql();
 	$q = "INSERT $pf INTO $nt (".implode(',',array_keys($c)).") VALUES ($v) $sf;";
 
 	if($dbo->run($q, array_values($c), 0, __LINE__)===false){return false;}
@@ -731,14 +766,14 @@ function scanFolder($dir, $force=0){
 			if(array_key_exists('parentid',$v)){//isdir
 				if($v['dir']){
 					if(!delDirRow($v['dir'])){return false;}
-					logger("Removed: ".$v['dir'], 2);
+					logger("Cleared : ".$v['dir'], 2);
 				}else{
 					logger("Baddirval: $k : ".$v['dir']);
 				}
 			}else{
 				$p = joinp($dirs['dir'], $k);
 				if(delFileRow(getFileRow($v['fileid']))===false){return false;}
-				logger("Removed: ".$p, 2);
+				logger("Cleared: ".$p, 2);
 			}
 		}
 	}
@@ -1296,8 +1331,8 @@ function post($key, $strict = false) {
 	return isset($_POST[$key]) && is_string($_POST[$key]) ? $_POST[$key] : ($strict ? null : '');
 }
 
-function get($key) {
-	return isset($_GET[$key]) && is_string($_GET[$key]) ? $_GET[$key] : '';
+function get($key, $strict = false) {
+	return isset($_GET[$key]) && is_string($_GET[$key]) ? $_GET[$key] : ($strict ? null : '');
 }
 
 
@@ -1482,13 +1517,14 @@ function makeDir($path){
 	return (is_dir($path) || mkdir($path, 0777, true) || error("Failed to create dir ".$path, 500));
 }
 
-function ignoreVars($setup){
+function ignoreSql($d=0){
+	$d = $d ?: PICTAP;
 	$pf = ''; $sf = '';
-	if($setup->db_type=='pgsql'){
+	if($d->db_type=='pgsql'){
 		$sf = 'ON CONFLICT DO NOTHING';
 	}else{
 		$pf = 'IGNORE ';
-		if($setup->db_type=='sqlite'){$pf = 'OR '.$pf;}
+		if($d->db_type=='sqlite'){$pf = 'OR '.$pf;}
 	}
 	return [$pf,$sf];
 }
@@ -1526,7 +1562,8 @@ function saveLogin($f){
 
 function userAuth($html=0){
 	if(!empty(PICTAP->timezone)){date_default_timezone_set(PICTAP->timezone);}
-	if(empty(PICTAP->cookie)){PICTAP->cookie = 'pictap';}//to be removed
+	$cook = PICTAP->cookie ?? 'pictap'; //to be removed
+
 	if(logger()) {
 		$user = getUser(PICTAP->users[1][0]);
 		define('USER', $user);
@@ -1537,7 +1574,7 @@ function userAuth($html=0){
 		error('path_pictures missing.');
 	}
 
-	$c=isset($_COOKIE[PICTAP->cookie]) && is_string($_COOKIE[PICTAP->cookie]) ? $_COOKIE[PICTAP->cookie] : '';
+	$c=isset($_COOKIE[$cook]) && is_string($_COOKIE[$cook]) ? $_COOKIE[$cook] : '';
 	[$user] = explode('-', $c . '');
 
 	$user = getUser($user);
@@ -1574,7 +1611,7 @@ function userAuth($html=0){
 				$valid = $user && $q === $user->pass;
 				if(!$iplist && $valid){
 					$authfile = PICTAP->path_data .'/auth/'.$user->hash.'.txt';
-					setcookie(PICTAP->cookie, $user->hash, time()+60*60*24*PICTAP->login_remember, "/");
+					setcookie($cook, $user->hash, time()+60*60*24*PICTAP->login_remember, "/");
 					saveLogin($authfile);
 				} else {
 					if($valid){$u=$p='*';}
@@ -1610,7 +1647,7 @@ function userAuth($html=0){
 	}
 
 	if(post('logout') && $user){
-		setcookie(PICTAP->cookie, '', time() - 3600, '/');
+		setcookie($cook, '', time() - 3600, '/');
 		@unlink($authfile);
 		if(post('logout')!=='1'){
 			$setup = clone PICTAP;
@@ -1690,7 +1727,7 @@ function usergen($u,$p,$t,$r,$s){
 }
 
 function userUpdate($setup,$id,$u,$insert=0){
-	[$pf, $sf] = ignoreVars($setup);
+	[$pf, $sf] = ignoreSql($setup);
 	$t = $setup->db_prefix . 'users';
 	$i = "INSERT $pf INTO $t (userid,username,password,token,role) VALUES ($id, ?, ?, ?, ?) $sf;";
 	$p = "UPDATE $t SET username = ?, password = ?, token = ?, role = ? WHERE userid = $id;";
@@ -1962,7 +1999,7 @@ function pageConfig($oldsetup){
 				$g = @file_get_contents($gf);
 				if(!$t){error('missing '.$tf);}
 				if(!$g){error('missing '.$gf);}
-				[$pf, $sf] = ignoreVars($setup);
+				[$pf, $sf] = ignoreSql($setup);
 				$g = str_replace(['/*#*/', '/*P*/', '/*S*/'], [$dpf, $pf, $sf], $t.$g);
 				if(!($dbo = openDb($setup))){error('openDB Error');}
 				try {
@@ -2088,9 +2125,7 @@ function remSymLinks($d,$s=0){
 }
 
 
-
-
-if(post('task')){
+function postTasks(){
 
 	userAuth();
 
@@ -2190,7 +2225,7 @@ if(post('task')){
 					$qq[] = $aid;
 					$qq[] = $fid;
 				}
-				[$pf, $sf] = ignoreVars(PICTAP);
+				[$pf, $sf] = ignoreSql();
 				$query = "INSERT $pf INTO {$pp}albumfiles (albumid, fileid) VALUES " . implode(',', $ph) . " $sf;";
 			} else {
 				foreach ($lid as $fid) {
@@ -2211,7 +2246,7 @@ if(post('task')){
 				albumLinks(1,$lid);
 			}
 
-			if (($r = $dbo->run("UPDATE {$pp}albums aa SET mtime = ?, qt = (SELECT COUNT(*) FROM {$pp}albumfiles af WHERE af.albumid = aa.albumid) WHERE aa.albumid = ?", [time(), $aid], 0, __LINE__)) === false) {
+			if (($r = $dbo->run("UPDATE {$pp}albums SET mtime = ?, qt = (SELECT COUNT(*) FROM {$pp}albumfiles WHERE {$pp}albumfiles.albumid = {$pp}albums.albumid) WHERE {$pp}albums.albumid = ?", [time(), $aid], 0, __LINE__)) === false) {
 				sendjs(0, $dbo->emsg);
 			}
 			$msg=$tot.' File(s) '.($act == 'add' ? 'Added': 'Removed');
@@ -2694,9 +2729,9 @@ if(post('task')){
 	} else {
 		sendjs(0, ucfirst($task).' Not Allowed');
 	}
+}
 
-
-} else{
+function getTasks(){
 
 	$pic = PICTAP->path_pictures;
 	$thm = PICTAP->path_thumbs;
@@ -2924,7 +2959,7 @@ function login_page($attempt){
 
 function htmldoc($config='',$lightbox='',$js=''){
 	header("Expires: Tue, 03 Jul 2001 06:00:00 GMT");
-	header("Last-Modified: " . gmdate("D, d M Y H:i:s:s") . " GMT");
+	header("Last-Modified: " . gmdate('D, d M Y H:i:s T'));
 	header('Content-Type: text/html; charset=UTF-8');
 	header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 	header("Cache-Control: post-check=0, pre-check=0", false);
@@ -2933,30 +2968,44 @@ function htmldoc($config='',$lightbox='',$js=''){
 	header("X-XSS-Protection: 1; mode=block");
 	header("Referrer-Policy: strict-origin-when-cross-origin");
 	header("Pragma: no-cache");
-	$page = '';
-	if(!$config){
-		if(!userCan('admin')){$page='noset';}
-	}else{
-		$page = 'config';
-	}
-$u=strtok($_SERVER['REQUEST_URI'], '?').'?m='.filemtime(__FILE__).'&sf=';
+	
+	$u=strtok($_SERVER['REQUEST_URI'], '?').'?m='.filemtime(__FILE__).'&sf=';
+	
 
-?><!DOCTYPE html>
+
+	echo '<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/svg+xml" href="<?php echo $u; ?>svg" />
-<link rel="apple-touch-icon" sizes="180x180" href="<?php echo $u; ?>png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="<?php echo $u; ?>mf" />
-<link rel="stylesheet" href="pictap.css?<?php echo filemtime(dirnm(__FILE__).'/pictap.css'); ?>">
-<title>Pictap</title>
-</head>
-<body class="<?php echo $page; ?>">
+<link rel="icon" type="image/svg+xml" href="'.$u.'svg" />
+<link rel="apple-touch-icon" sizes="180x180" href="'.$u.'png">
+<link rel="stylesheet" href="pictap.css?'.filemtime(dirnm(__FILE__).'/pictap.css').'">
+<script src="pictap.js?'.filemtime(dirnm(__FILE__).'/pictap.js').'"></script>
+';
+	$page = '';
+	if(PTM){
+		if(!$config){
+			if(!userCan('admin')){$page='noset';}
+		}else{
+			$page = 'config';
+		}
+		$t = 'Pictap';
+		echo'<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="'.$u.'mf" />';
+	}else{
+		$t = $config;
+		$page = 'rows';
+	}
 
+	echo '<title>'.$t.'</title></head><body class="'.$page.'">';
+
+	if(!PTM){
+		echo '<h1>'.$config.'</h1><div class="gallery"></div>';
+		echo '<script>const f = '.$lightbox.';sharedView(f);</script></body></html>';
+		die;
+	}
+?>
 <header id="header" class="open">
 	<div id="topbar">
 		<div class="rbtn" id="lines" title="Menu" onclick="sidebar(2);"><i class="ico-menu"></i></div>
@@ -3010,7 +3059,6 @@ $u=strtok($_SERVER['REQUEST_URI'], '?').'?m='.filemtime(__FILE__).'&sf=';
 <div id="toast"></div>
 
 <?php
-	echo '<script src="pictap.js?'.filemtime(dirnm(__FILE__).'/pictap.js').'"></script>';
 	$dirs = '{d:{},m:0,home:0,root:0}';
 
 	$p = [
