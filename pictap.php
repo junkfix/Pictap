@@ -117,10 +117,14 @@ class MyDB {
 					$this->conn = new SQLite3($db->db_file);
 					$this->conn->busyTimeout(60000);
 					$this->exec("PRAGMA foreign_keys = 1");
+					$this->conn->enableExceptions(true);
 			}
 		} catch (Exception $e) {
 			throw new Exception("Db Error: ".$e->getMessage());
 		}
+	}
+	public function myerr() {
+		return (userCan('admin') ? $this->emsg : 'Database Error');
 	}
 
 	public function close() {
@@ -136,6 +140,7 @@ class MyDB {
 				default => $this->conn->exec($q) !== false
 			};
 		} catch (Exception $e) {
+			$this->emsg = $e->getMessage();
 			throw new Exception("Query failed: " . $e->getMessage());
 		}
 	}
@@ -420,10 +425,11 @@ function getDirID($n, $insert=true){
 }
 
 function familyQ(){
-	$r=''; $f = PICTAP->family_dir; $s=[];
+	$r=''; $s=[];
 	if(!userCan('alldir')){
 		$d = ["d.dir = ?","d.dir LIKE ?"];
 		$s[] = USER->user; $s[] = USER->user."/%";
+		$f = PICTAP->family_dir;
 		if(userCan('family') && $f){
 			$d[] = "d.dir = ?";
 			$d[] = "d.dir LIKE ?";
@@ -822,13 +828,13 @@ function loopDir(&$dir, &$dirs, &$dirlist, &$old, &$dirsize, &$totalfiles, $forc
 				$cleanname = sanitise_name($filename);
 				if($filename !== $cleanname){
 					$npath = $dir . '/' . $cleanname;
-					$r = safe_rename($path, $npath);
-					if(!$r){
-						die("Error rename ".$npath );
-					}else{
-						$filename = basename($r[1]);
-						$path = $dir . '/' . $filename;
+					logger("Rename: $path to $npath", 2);
+					if(!($r = safe_rename($path, $npath))){
+						logger("RenameError: $path to $npath");
+						continue;
 					}
+					$filename = basename($r[1]);
+					$path = $dir.'/'.$filename;
 				}
 				if($filesize){
 					$nameonly = splitExt($path);
@@ -840,9 +846,13 @@ function loopDir(&$dir, &$dirs, &$dirlist, &$old, &$dirsize, &$totalfiles, $forc
 						$npath=$nameonly[0].'_'.$q.'.'.$nameonly[2];
 						$filename = basename($npath);
 
-						logger('** rename '.$path." to ".$npath, 2);
+						logger("Rename: $path to $npath", 2);
 						safe_rename($path,$npath);
-						$path = $npath;
+						if(!safe_rename($path, $npath)){
+							logger("RenameError: $path to $npath");
+							continue;
+						}
+					$path = $npath;
 					}
 					$dupchecker[$nameonly[0]]=1;
 
@@ -2142,7 +2152,7 @@ function postTasks(){
 		$ua=0;
 		if($aid){
 			if(($stmt = $dbo->run("SELECT * FROM {$pp}albums WHERE albumid = ? $uf", [$aid], 1, __LINE__)) === false){
-				sendjs(0,$dbo->emsg);
+				sendjs(0,$dbo->myerr());
 			}
 
 			if($stmt) {
@@ -2175,7 +2185,7 @@ function postTasks(){
 			$qa = [$name, time(), $shr, $fam];
 
 			if(($stmt = $dbo->run($query, $qa, 0, __LINE__)) === false){
-				sendjs(0, $dbo->emsg);
+				sendjs(0, $dbo->myerr());
 			}
 			$lid = $aid? '' : ' - '.$dbo->lastInsertId();
 
@@ -2198,14 +2208,14 @@ function postTasks(){
 			albumLinks(0,$aid,1);
 
 			if(($fr = $dbo->run("DELETE FROM {$pp}albumfiles af WHERE af.albumid = ? AND EXISTS ( SELECT 1 FROM {$pp}albums aa WHERE aa.albumid = af.albumid $uf );", [$aid], 0, __LINE__)) === false){
-				sendjs(0, $dbo->emsg);
+				sendjs(0, $dbo->myerr());
 			}
 			$fr = $dbo->rowCount();
 			if($ua['share']) {
 				@unlink($sp.$ua['share']);
 			}
 			if (($r = $dbo->run("DELETE FROM {$pp}albums WHERE albumid = ? $uf", [$aid], 0, __LINE__)) === false) {
-				sendjs(0, $dbo->emsg);
+				sendjs(0, $dbo->myerr());
 			}
 			$msg='Album Removed: '.$name.' ('.$fr.')';
 			logger($msg,2);
@@ -2239,7 +2249,7 @@ function postTasks(){
 			}
 
 			if (($r = $dbo->run($query, $qq, 0, __LINE__)) === false) {
-				sendjs(0, $dbo->emsg);
+				sendjs(0, $dbo->myerr());
 			}
 			$tot = $dbo->rowCount();
 			if($act == 'add'){
@@ -2247,7 +2257,7 @@ function postTasks(){
 			}
 
 			if (($r = $dbo->run("UPDATE {$pp}albums SET mtime = ?, qt = (SELECT COUNT(*) FROM {$pp}albumfiles WHERE {$pp}albumfiles.albumid = {$pp}albums.albumid) WHERE {$pp}albums.albumid = ?", [time(), $aid], 0, __LINE__)) === false) {
-				sendjs(0, $dbo->emsg);
+				sendjs(0, $dbo->myerr());
 			}
 			$msg=$tot.' File(s) '.($act == 'add' ? 'Added': 'Removed');
 			logger($ua['name'].' - '.$msg,2);
@@ -2266,7 +2276,7 @@ function postTasks(){
 		OR LOWER(c.country) LIKE ?
 		LIMIT 10";
 		if (($stmt = $dbo->run($query, ["%$name%","%$name%","%$name%"], 2, __LINE__)) === false) {
-			sendjs(0, $dbo->emsg);
+			sendjs(0, $dbo->myerr());
 		}
 		$rv = [];
 		$stmt = $stmt ?: [];
@@ -2305,7 +2315,7 @@ function postTasks(){
 					INNER JOIN {$pp}dirs d USING(dirid)
 					WHERE 1 = 1 $fs GROUP BY m ORDER BY m DESC;";
 					if (($stmt = $dbo->run($query, $fp, 2, __LINE__)) === false) {
-						sendjs(0, $dbo->emsg);
+						sendjs(0, $dbo->myerr());
 					}
 					$stmt = $stmt ?: [];
 					foreach ($stmt as $r) {
@@ -2329,7 +2339,7 @@ function postTasks(){
 					INNER JOIN {$pp}dirs d USING(dirid)
 					WHERE 1 = 1 $fs GROUP BY t.tag;";
 					if (($stmt = $dbo->run($query, $fp, 2, __LINE__)) === false) {
-						sendjs(0, $dbo->emsg);
+						sendjs(0, $dbo->myerr());
 					}
 					$f['i']=[];
 					$stmt = $stmt ?: [];
@@ -2354,7 +2364,7 @@ function postTasks(){
 					INNER JOIN {$pp}dirs d USING(dirid)
 					WHERE 1 = 1 $fs GROUP BY t.cat, t.tag;";
 					if (($stmt = $dbo->run($query, $fp, 2, __LINE__)) === false) {
-						sendjs(0, $dbo->emsg);
+						sendjs(0, $dbo->myerr());
 					}
 					$f['i']=[];
 					$stmt = $stmt ?: [];
@@ -2410,14 +2420,14 @@ function postTasks(){
 				WHERE $cond GROUP BY f.fileid, l.location, s.state, c.country, v.dev, t.tag ".$limit;
 				$ara = array_merge($rank_params, $cond_params, $fp);
 				if (($stmt = $dbo->run($query, $ara, 2, __LINE__)) === false) {
-					sendjs(0, $dbo->emsg);
+					sendjs(0, $dbo->myerr());
 				}
 				$stmt = $stmt ?: [];
 				loopFiles($stmt, $f);
 			}
 			if(empty($f['mt'])){
 				if (($gtt = $dbo->run("SELECT MAX(mt) as mm FROM {$pp}dirs d WHERE 1 = 1 $fs LIMIT 1;", $fp, 1, __LINE__)) === false) {
-					sendjs(0, $dbo->emsg);
+					sendjs(0, $dbo->myerr());
 				}
 				$f['mt'] = (int)$gtt['mm'];
 			}
@@ -2512,6 +2522,24 @@ function postTasks(){
 		sendjs(1,"Edited: ".basename($path));
 
 
+
+	} else if($task === 'refresh' && userCan('edit')){
+		if(post('type')==='dir'){
+			$name = post('new');
+			getPostDir($id,$dirpath);
+			if(updateDir($id,['mt'=>0]) === false){
+				sendjs(0,"Error updating /$name");
+			}
+			scanFolder($dirpath);
+			sendjs(1, "Updated: /$name", ['Dir' => menuList()]);
+		}else{
+			getPostFile($fr, $path);
+			$rp = relative($path);
+			if(updateFile($fr['fileid'], ['th'=>2]) === false){
+				sendjs(0,"Refresh Faiiled ".$rp);
+			}
+			sendjs(1,"Refreshed ".$rp);
+		}
 
 	} else if($task === 'newdir' && userCan('newdir')){
 		getPostDir($id,$dirpath);
@@ -3090,6 +3118,7 @@ function htmldoc($config='',$lightbox='',$js=''){
 		$p['can'][$i]=1;
 	}
 	$p['can']['map']=$p['can']['edit'];
+	$p['can']['refresh']=$p['can']['edit'];
 	$p['can']['thumb']=$p['can']['edit'];
 	$p['can']['eday']=$p['can']['search'];
 
