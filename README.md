@@ -93,6 +93,7 @@ WEBROOT
 * Convert other image formats (eg. HEIC) to jpg
 * Create cron tasks to monitor changes in the image folder
 * Auto upload for mobile (when PWA can remember directory permission across the sessions)
+* Add custom new location places in the gps databases
 * ~Support Mysql/Postgres database engines~
 
 ### Screenshots
