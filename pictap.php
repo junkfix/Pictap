@@ -25,11 +25,13 @@ if(PTM){
 	@ini_set('memory_limit', '512M');
 	@ini_set('max_execution_time', '0');
 	@ini_set('max_input_time', '-1');
-
-	if(post('task')){
-		postTasks();
-	}else{
-		getTasks();
+	
+	if(php_sapi_name() != 'cli'){
+		if(post('task')){
+			postTasks();
+		}else{
+			getTasks();
+		}
 	}
 }else{
 	$a = get('a');
@@ -106,6 +108,7 @@ class MyDB {
 				case 'mysql':
 					$host = $db->db_host; $socket = null;
 					if((stripos($host, '/') !== false)){$socket = $host; $host = null;}
+					mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 					$this->conn = new mysqli($host, $db->db_user, $db->db_pass, $db->db_name, $db->db_port ?: 3306, $socket);
 					if ($this->conn->connect_errno) {
 						throw new Exception($this->conn->connect_error);
@@ -412,7 +415,7 @@ function getDirID($n, $insert=true){
 	if ($stmt) {
 		return $stmt;
 	} else if($insert){
-		if(($stmt = $dbo->run("SELECT CASE WHEN (SELECT MAX(dirid) FROM $nt) - (SELECT COUNT(*) FROM $nt) >= 10 THEN COALESCE( (SELECT MIN(t1.dirid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.dirid = t1.dirid + 1)), 1) ELSE (SELECT 0) END AS did;", null, 1, __LINE__)) === false){return false;}
+		if(($stmt = $dbo->run("SELECT CASE WHEN (SELECT MAX(dirid) FROM $nt) - (SELECT COUNT(*) FROM $nt) > 0 THEN COALESCE( (SELECT MIN(t1.dirid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.dirid = t1.dirid + 1)), 1) ELSE (SELECT 0) END AS did;", null, 1, __LINE__)) === false){return false;}
 		$k = 'dir'; $p = '?'; $v = [$name];
 		if(!empty($stmt['did'])){$k .= ',dirid'; $p .= ',?';$v[] = $stmt['did'];}
 		[$pf, $sf] = ignoreSql();
@@ -521,13 +524,12 @@ function delFileRow($r){
 	return $dbo->rowCount();
 }
 
-function insertFile($c, $file){
-	logger("insertFile: ".$c['dirid'].' '.$file, 2);
+function insertFile($c, $file, $dir){
 	$c['file'] = $file;
 	$nt = PICTAP->db_prefix."files";
 
 	if(!($dbo = openDb()) ||
-	($stmt = $dbo->run("SELECT CASE WHEN (SELECT MAX(fileid) FROM $nt) - (SELECT COUNT(*) FROM $nt) >= 30 THEN COALESCE( (SELECT MIN(t1.fileid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.fileid = t1.fileid + 1)), 1) ELSE (SELECT 0) END AS fid;", null, 1, __LINE__)) === false){
+	($stmt = $dbo->run("SELECT CASE WHEN (SELECT MAX(fileid) FROM $nt) - (SELECT COUNT(*) FROM $nt) > 0 THEN COALESCE( (SELECT MIN(t1.fileid + 1) FROM $nt t1 WHERE NOT EXISTS (SELECT 1 FROM $nt t2 WHERE t2.fileid = t1.fileid + 1)), 1) ELSE (SELECT 0) END AS fid;", null, 1, __LINE__)) === false){
 		return false;
 	}
 	if(!empty($stmt['fid'])){$c['fileid'] = (int)$stmt['fid'];}
@@ -538,8 +540,10 @@ function insertFile($c, $file){
 	$q = "INSERT $pf INTO $nt (".implode(',',array_keys($c)).") VALUES ($v) $sf;";
 
 	if($dbo->run($q, array_values($c), 0, __LINE__)===false){return false;}
+	$id = $c['fileid'] ?? $dbo->lastInsertId();
 	//$fileid=$dbo->lastInsertId();
-	return $c['fileid'];
+	logger("insertFile-$id: $dir/$file", 2);
+	return $id;
 }
 
 function updateFile($fileid, $c){
@@ -900,7 +904,7 @@ function loopDir(&$dir, &$dirs, &$dirlist, &$old, &$dirsize, &$totalfiles, $forc
 				unset($old[$filename]);
 			}else{
 				if(!$ft){$c['tk']=$filemtime;}
-				if(($cfid = insertFile($c,$filename)) === false){
+				if(($cfid = insertFile($c,$filename,$dirs['dir'])) === false){
 					return false;
 				}
 			}
