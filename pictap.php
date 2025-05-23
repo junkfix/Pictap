@@ -1,7 +1,7 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['2.0.0',2]; //[main, config]]
+const PIC_VER = ['2.0.1',2]; //[main, config]]
 
 define('PTM', $ptset ?? 1);
 if(get('sf')){sfile(get('sf'));}
