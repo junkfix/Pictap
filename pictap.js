@@ -1,4 +1,4 @@
-/*! Pictap Gallery 2.0.0
+/*! Pictap Gallery 2.0.2
 https://github.com/junkfix/Pictap */
 
 
@@ -99,7 +99,28 @@ class PhotoSwipeFullscreen{constructor(e){this.lightbox=e,this.lightbox.on("init
 const _id = (id) => document.getElementById(id);
 const _qs = (q, el) => (el || document).querySelector(q);
 const _qsa = (q, el) => Array.from((el || document).querySelectorAll(q));
-const _ce = (t) => document.createElement(t);
+
+//here p = innerHTML/textContent =..., m = appendChild(...)
+const _ce = (t, att, p, m) => {
+	t = document.createElement(t);
+	if(att){
+		for(const k in att){_att(t, k, att[k]);}
+	}
+	const pp = (e,x) => {
+		for (const k in e) {
+			if(x){
+				t[k] = e[k];
+			}else{
+				(Array.isArray(e[k]) ? e[k] : [e[k]]).forEach(v =>{
+					t[k](v);
+				});
+			}
+		}
+	};
+	if(p){pp(p,1);}
+	if(m){pp(m);}
+	return t;
+};
 
 const _on = (el, ev, fn, opt) => ev.split(' ').forEach(e => el.addEventListener(e, fn, opt));
 
@@ -352,16 +373,12 @@ function mydb(tb){
 function sharedView(f){
 	const g = _qs('.gallery');
 	f.items.forEach(v=>{
-		const ah = _ce('a');
-		ah.className = 'file';
-		ah.style.setProperty('--ratio', (v.h) ? v.w + '/' + v.h : '4/3');
+		const ah = _ce('a', {'class': 'file', style: '--ratio:'+( (v.h) ? v.w + '/' + v.h : '4/3')});
 		if(v.ft){
 			_att(ah,'data-pswp-width', v.w);
 			_att(ah,'data-pswp-height', v.h);
-			const im = _ce('img');
-			_att(im,'loading','lazy');
+			const im = _ce('img',{loading:'lazy',src: f.url + encodeURIComponent(v.fileid + 't-'+removeExt(v.file))+'.webp?mt='+v.mt});
 			im.onload = imld;
-			_att(im,'src', f.url + encodeURIComponent(v.fileid + 't-'+removeExt(v.file))+'.webp?mt='+v.mt);
 			ah.appendChild(im);
 			ah.appendChild(_ce('i-con'));
 		}else{
@@ -370,16 +387,11 @@ function sharedView(f){
 			ah.innerHTML = svgExt(ext);
 			ah.classList.add('loaded');
 		}
-		const fo = _ce('div');
-		fo.className = 'info';
-		const fn=_ce('f-nm');
-		fn.textContent = v.file;
-		fo.appendChild(fn);
+		const fo = _ce('div',{'class':'info'});
+		fo.appendChild(_ce('f-nm',0,{textContent: v.file}));
 		if(v.ft>1){
 			_att(ah,'data-pswp-type', 'video');
-			const dd = _ce('v-dur');
-			dd.textContent = vduration(v.dur);
-			fo.appendChild(dd);
+			fo.appendChild(_ce('v-dur',0,{textContent: vduration(v.dur)}));
 		}
 		ah.appendChild(fo);
 		_att(ah,'href', f.url + v.fileid + 'f-'+encodeURIComponent(v.file)+'?mt='+v.mt);
@@ -486,9 +498,7 @@ function toast(message, opts = {}){
 		}
 	};
 
-	const el = _ce('div');
-	el.className = 'toast ' + opts.theme;
-	el.innerHTML = '<p>' + message + '</p>';
+	const el = _ce('div',{'class':'toast ' + opts.theme},{innerHTML: '<p>' + message + '</p>'});
 	if(typeof opts.click === 'function'){
 		_on(el, 'click', opts.click);
 	}else{
@@ -497,8 +507,7 @@ function toast(message, opts = {}){
 
 	if(opts.close){
 		el.classList.add('close');
-		const closeBtn = _ce('i');
-		closeBtn.className = 'rbtn ico-x';
+		const closeBtn = _ce('i',{'class':'rbtn ico-x'});
 		closeBtn.onclick = dismiss;
 		el.insertBefore(closeBtn, el.firstChild);
 	}
@@ -586,9 +595,7 @@ function popup(head, html='', options={}){
 
 	const fbtn = () => {
 		options.buttons.forEach(bn => {
-			const bt = _ce('button');
-			bt.innerHTML = bn.text;
-			bt.className = 'btn' + (bn.def ? ' default' : '');
+			const bt = _ce('button',{'class':'btn' + (bn.def ? ' default' : '')},{innerHTML: bn.text});
 			bt.onclick = pressed.bind(this, bn, section);
 			ft.appendChild(bt);
 		});
@@ -596,11 +603,9 @@ function popup(head, html='', options={}){
 
 
 	const pop = _id('popup');
-	const popl = _ce('div');
-	popl.id = 'poplayer';
+	const popl = _ce('div',{id: 'poplayer'});
 	pop.appendChild(popl);
-	const pop_el = _ce('div');
-	pop_el.id = 'popbox';
+	const pop_el = _ce('div',{id: 'popbox'});
 
 	const hd = _ce('header');
 	hd.innerHTML = head;
@@ -656,17 +661,14 @@ const ddGen = (el, op, s='', id='', t='Please Select')=>{
 	if(op){
 		sel_el.id = id;
 		const selv = s+'';
-		const dh = _ce('option');
-		_att(dh,'disabled','');
-		dh.textContent = t;
+		const dh = _ce('option',{disabled:''},{textContent: t});
 		if( selv === ''){
 			_att(dh,'selected','');
 		}
 		sel_el.appendChild(dh);
 		for(const i in op){
-			const op_el = _ce('option');
+			const op_el = _ce('option',{value: v});
 			const v = op[i][0]+'';
-			op_el.value = v;
 			if(selv === v){_att(op_el,'selected','');}
 			const q =op[i].length>1? op[i][1] : op[i][0];
 			if(q.includes('<')){
@@ -749,10 +751,8 @@ async function act_upload(hide,appup){
 		if(mtype || (_p.ext_uploads.includes(ext) || _p.ext_uploads.includes('*'))){
 			const t = ['M8 6H1V1H8M2 5H7V2H2Z','M8 6H1V1h7M2 5h5L5 2 4 4 3.2 3Z','M6 1H1v5h5V4l2 2V1L6 3Z'];
 			let src = (mtype === 1 && up.maxthm>0) ? URL.createObjectURL(file) : "data:image/svg+xml,%3Csvg fill='%23666' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 7'%3E%3Cpath d='"+t[mtype]+"'%3E%3C/path%3E%3C/svg%3E";
-			const f = _ce('div');
-			f.className = 'uploadthumb';
-			const im = _ce('img');
-			_att(im,'src',src);
+			const f = _ce('div',{'class': 'uploadthumb'});
+			const im = _ce('img',{src: src});
 			f.appendChild(im);
 			const pg = _ce('nav');
 			f.appendChild(pg);
@@ -764,17 +764,13 @@ async function act_upload(hide,appup){
 			dv.textContent = file.name;
 			f.appendChild(dv);
 
-			const b = _ce('button');
-			b.title = "Close";
-			b.className = 'uploadclose';
+			const b = _ce('button',{'class':'uploadclose',title: "Close"});
 			b.onclick = () => {
 				up.List = up.List.filter(w => w.f.name !== file.name);
 				f.remove();
 				up.maxthm++;
 			};
-			const i = _ce('i');
-			i.className = 'ico-x';
-			b.appendChild(i);
+			b.appendChild(_ce('i',{'class':'ico-x'}));
 			f.appendChild(b);
 
 			_id('uploadlist').appendChild(f);
@@ -855,8 +851,7 @@ async function act_upload(hide,appup){
 	};
 
 
-	const h = _ce('div');
-	h.id = 'uploadbox';
+	const h = _ce('div',{id: 'uploadbox'});
 	h.ondrop = (e) => {
 		e.preventDefault();
 		h.classList.remove('drag');
@@ -875,25 +870,15 @@ async function act_upload(hide,appup){
 	<p>Drag and drop folder/files here</p>\
 	';
 	const p1 = _ce('p');
-	const f = _ce('input');
-	f.type = 'file';
-	f.id = 'uploadinput';
-	f.style.display = 'none';
+	const f = _ce('input',{multiple: '', type: 'file', id: 'uploadinput', style: 'display:none'});
 	//_att(f, 'accept', 'image/*, video/*');
-	_att(f, 'multiple', '');
 	//_att(f, 'webkitdirectory', '');
 	_on(f,'change', (e) => {addItem(e.target.files,1);});
 	p1.appendChild(f);
 
-	const fl = _ce('label');
-	fl.className = 'btn';
-	fl.textContent = 'Select Files';
-	_att(fl, 'for', 'uploadinput');
-	p1.appendChild(fl);
+	p1.appendChild(_ce('label',{'class':'btn', 'for': 'uploadinput'},{textContent: 'Select Files'}));
 
-	const bt = _ce('span');
-	bt.className = 'btn default';
-	bt.textContent = 'Upload Now';
+	const bt = _ce('span',{'class':'btn default'},{textContent: 'Upload Now'});
 	bt.onclick = () => {
 		if(up.List.length === 0){
 			toast('No files selected',{theme:'red'});
@@ -926,9 +911,7 @@ async function act_upload(hide,appup){
 
 	h.appendChild(p2);
 
-	const ul = _ce('div');
-	ul.id = 'uploadlist';
-	h.appendChild(ul);
+	h.appendChild(_ce('div',{id: 'uploadlist'}));
 
 	u.appendChild(h);
 	if(appup){
@@ -976,10 +959,7 @@ function act_edit(atag){
 
 	let loaded = 0;
 	let imxy;
-
-	const orientation = parseInt(_att(atag,'data-ori'),10) || 1;
-	let curot = orientation;
-
+	const vcut = {start: 0, stop: 0, pos: 0, dur: 0, audio: 1, el: {}};
 	if(pics.includes(ext)){
 		mtype = 1;
 	}
@@ -990,6 +970,9 @@ function act_edit(atag){
 
 	if(!mtype){toast(ext+' Not Supported');return;}
 
+	const orientation = parseInt(_att(atag,'data-ori'),10) || ((mtype === 1)? 1 : 0);
+	let curot = (mtype === 1)? orientation : 0;
+
 	let mu = getUrlID(); mu.url +='#edit/'+fileid+'/'+encodeURIComponent(file);
 	updHist(1,mu);
 	navi.backbtn = 0;
@@ -997,10 +980,10 @@ function act_edit(atag){
 	window.scrollTo(0,0);
 
 	const rotate = {
-		r:{1:6,6:3,3:8,8:1,2:5,5:4,4:7,7:2},
-		l:{6:1,3:6,8:3,1:8,5:2,4:5,7:4,2:7},
-		h:{1:2,8:7,3:4,6:5,2:1,5:6,4:3,7:8},
-		v:{1:4,8:7,3:2,6:5,4:1,7:8,2:3,5:6},
+		r:{1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1},
+		l:{1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3},
+		h:{1:2,2:1,3:4,4:3,5:6,6:5,7:8,8:7},
+		v:{1:4,2:3,3:2,4:1,5:6,6:5,7:8,8:7},
 		d:{1:0,2:0,3:180,4:0,5:90,6:90,7:90,8:270},
 	};
 	const tclose = _id("tclose");
@@ -1010,25 +993,31 @@ function act_edit(atag){
 	const editor = _id("editor");
 	const nav = _ce('nav');
 	selectbar.appendChild(nav);
-	const editwrap = _ce('div');
-	editwrap.id = "editwrap";
-	const imgdiv = _ce('div');
-	imgdiv.id = "editimgdiv";
+	const editwrap = _ce('div',{id: "editwrap"});
+	const imgdiv = _ce('div',{id: "editimgdiv"});
 	let icons;
 	const canvas = _ce('canvas');
 	const video = _ce('video');
 	if(mtype === 1){
 		icons = {l:'left',r:'right',h:'hoz',v:'vert',c:'crop'};
 		imgdiv.appendChild(canvas);
-	}
-	if(mtype === 2){
-		icons = {r:'right'};
+	}else if(mtype === 2){
+		icons = {l:'left',r:'right',c: 'cut'};
 		_att(video, 'controls', '');
 		_att(video, 'playsinline', '');
 		_att(video, 'src', src);
 		imgdiv.appendChild(video);
-		imgdiv.className = "vwrap";
-		curot = 0;
+		imgdiv.className = "vwrap loader";
+		_on(video, 'loadedmetadata', _=> {
+			loaded = 1;
+			let d = video.duration;
+			vcut.dur = d;
+			vcut.stop = d;
+			imgdiv.classList.remove('loader');
+			imgRot();
+		});
+		_on(video, 'timeupdate', _=> {vcut.pos = video.currentTime;});
+		imgdiv.appendChild(_ce('div',{'class': 'ctxt vtrim'},0,{appendChild:_ce('div')}));
 	}
 
 
@@ -1080,13 +1069,15 @@ function act_edit(atag){
 				u += '&w='+W+'&h='+H+'&x='+X+'&y='+Y;
 			}
 		}else{
-			if(curot){
-				u += '&vrot=1';
-			}else{u='';}
+			let d = (orientation + curot) % 360;
+			u = (orientation == d)? '' : '&r='+d+'&vrot=1';
+			if(vcut.trim){
+				u += '&vcut=1&ss='+vcut.start+'&to='+vcut.stop+'&aud='+vcut.audio;
+			}
 		}
 
 		if(!u){toast('No Changes'); tclose.click();return;}
-		popup('Confirmation','Save '+file+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox"> Overwrite</label></p>',{
+		popup('Confirmation','Save '+file+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox" checked> Overwrite</label></p>',{
 			buttons: [
 				{
 					text: "No"
@@ -1274,12 +1265,9 @@ function act_edit(atag){
 		pMove();
 	};
 
-	const cropbg = _ce('div');
-	cropbg.id = "cropbg";
+	const cropbg = _ce('div',{id: "cropbg"});
 
-	const cropsel = _ce('div');
-	cropsel.id = "cropsel";
-
+	const cropsel = _ce('div',{id: "cropsel"});
 
 	const close = () => {
 		if(mtype === 1){
@@ -1321,21 +1309,42 @@ function act_edit(atag){
 
 
 	const imgRot = (c) => {
-		if(mtype === 2){
-			if(c){
-				curot += 90;
-				if( curot > 270 ){curot = 0;}
-				video.style.transform = 'rotate('+curot+'deg)';
-			}
-			return;
-		}
 		if(!loaded){return;}
+
 		if(c === 'c'){
 			body.classList.remove('rotate');
 			body.classList.add('crop');
 			return;
-
 		}
+
+		if(mtype === 2){
+			let r = {l: 270, r: 90};
+			if(r[c]){
+				curot += r[c];
+				curot = curot % 360;
+			}
+
+			video.style.transform = 'rotate('+curot+'deg)';
+
+			if(c == 'start' || c == 'stop'){
+				vcut[c] = vcut.pos; vcut.trim = 1;
+				let t = vcut.stop - vcut.start;
+				if(t<0){vcut.start = 0; vcut.stop = t = vcut.dur; }
+				vcut.el.dur.textContent = 'Dur: '+numTime(t);
+			}
+			if(c == 'sound'){
+				vcut.audio = vcut.audio ? 0 : 1;
+				vcut.trim = 1;
+			}
+			vcut.el.audio.className = 'cbtn ico-'+(vcut.audio?'':'no')+'sound';
+			vcut.el.start.textContent = numTime(vcut.start);
+			vcut.el.stop.textContent = numTime(vcut.stop);
+			['start','stop','dur'].forEach(i=>{
+				imgdiv.style.setProperty('--v'+i, vcut[i]);
+			});
+			return;
+		}
+
 		if(c){
 			curot = rotate[c][curot];
 			crop.width = 0;
@@ -1395,10 +1404,8 @@ function act_edit(atag){
 
 
 	for(const [k, v] of Object.entries(icons)){
-		const d = _ce('div');
-		d.className = 'rbtn';
-		const i = _ce('i');
-		i.className = 'ico-'+v;
+		const d = _ce('div',{'class':'rbtn'});
+		const i = _ce('i',{'class':'ico-'+v});
 		i.onclick = imgRot.bind(this,k);
 		d.appendChild(i);
 		nav.appendChild(d);
@@ -1408,8 +1415,7 @@ function act_edit(atag){
 	if(mtype === 1){
 
 		for(const i of ['top','left','bottom','right','topleft','topright','bottomleft','bottomright']){
-			const d = _ce('div');
-			d.id = i;
+			const d = _ce('div',{id: i});
 			_on(d,pointDown, (e) => {pDown(e,d);});
 			cropsel.appendChild(d);
 		}
@@ -1417,8 +1423,7 @@ function act_edit(atag){
 		imgdiv.appendChild(cropbg);
 		imgdiv.appendChild(cropsel);
 		for(const [k, v] of Object.entries(aspects)){
-			const b = _ce('button');
-			b.textContent = k;
+			const b = _ce('button',0,{textContent: k});
 			b.onclick = ()=>{
 				curasp = k;
 				[...nav.children].forEach((f) =>{
@@ -1460,12 +1465,39 @@ function act_edit(atag){
 			tclose.click();
 		};
 		image.src = src;
+	}else{
+		//video
+		const i = _ce('i',{'class': 'ico-start'});
+		i.onclick = imgRot.bind(this,'start');
+		nav.appendChild(_ce('div',{'class': 'cbtn'},0,{appendChild: i}));
+
+		vcut.el.start = _ce('div',{'class': 'ctxt'},{textContent: numTime(0)});
+		nav.appendChild(vcut.el.start);
+
+		vcut.el.dur = _ce('i');
+		vcut.el.audio = _ce('i',{'class': 'cbtn ico-sound'})
+		vcut.el.audio.onclick = imgRot.bind(this,'sound');
+		nav.appendChild(_ce('div',{'class': 'ctxt', style: 'flex:1;text-align:center'},0,{appendChild: [vcut.el.audio, vcut.el.dur]}));
+
+		vcut.el.stop = _ce('div',{'class': 'ctxt'},{textContent: '-'});
+		nav.appendChild(vcut.el.stop);
+
+		const j = _ce('i',{'class': 'ico-stop'});
+		j.onclick = imgRot.bind(this,'stop');
+		nav.appendChild(_ce('div',{'class': 'cbtn'},0,{appendChild: j}));
+		imgRot();
 	}
 	tclose.onclick = close;
 }
 
 
-
+function numTime(x,t){
+	x=Math.round(x);
+	t = (x>=3600)? Math.floor(x/3600).toString().padStart(2,'0') + ':' : '';
+	t += (Math.floor(x/60)-Math.floor(x/3600)*60).toString().padStart(2,'0');
+	t += ':' + Math.round(x%60).toString().padStart(2,'0');
+	return t;
+}
 
 
 
@@ -1560,15 +1592,11 @@ async function buildMenu(){
 	};
 
 	const genLI = (folder) => {
-		const li = _ce('li');
-		_att(li, 'data-id', folder.id);
-		_att(li, 'data-pid', folder.pid);
+		const li = _ce('li',{'data-id': folder.id, 'data-pid': folder.pid});
 
-		const a = _ce('a');
-		a.href = getUrlID(folder.id).url;
-		let n = folder.name+'';
-		if(n === ''){n = 'Root';a.className = 'root';}
-		a.textContent = n;
+		let n = folder.name+''; let c ='';
+		if(n === ''){n = 'Root';c = 'root';}
+		const a = _ce('a',{'class': c, href: getUrlID(folder.id).url},{textContent: n});
 		a.onclick = genPage.bind(this,folder.id, a);
 		li.appendChild(a);
 		if(folder.cubs.length > 0){
@@ -1577,8 +1605,7 @@ async function buildMenu(){
 			li.appendChild(b);
 			li.classList.add('sub');
 
-			const subUl = _ce('ul');
-			subUl.style.display = 'none';
+			const subUl = _ce('ul',{style: 'display:none'});
 			folder.cubs.forEach((subFolder) => {
 				const subLi = genLI(subFolder,'subul');
 				subUl.appendChild(subLi);
@@ -1597,11 +1624,7 @@ async function buildMenu(){
 	const menu = _id('menu');
 	menu.innerHTML = '<ul id="premenu"><li><a href="?a=Albums"><u class="ico-album"></u>Albums</a></li><li><a href="?t=Timeline"><u class="ico-date"></u>Timeline</a></li><li><a href="?k=Tags"><u class="ico-tag"></u>Tags</a></li></ul>';
 
-	const ul = _ce('ul');
-	const sor = Object.keys(Dir.d).map(menuArr)[0];
-	const li = genLI(sor);
-	ul.appendChild(li);
-	menu.appendChild(ul);
+	menu.appendChild(_ce('ul',0,0,{appendChild: genLI(Object.keys(Dir.d).map(menuArr)[0])}));
 }
 
 
@@ -1918,6 +1941,11 @@ async function cMenu(e,dhis,who,rpt){
 						}
 						break;
 					}
+					case "left":
+					case "right":{
+						act_rot(action);
+						break;
+					}
 				}
 				break;
 			}
@@ -1974,24 +2002,37 @@ async function cMenu(e,dhis,who,rpt){
 
 		case 'dots':{
 			let t = 0;
-			let a = sels.length === 0 ? 'upload,newdir,album'+((navi.mode == 'd')?',refresh':'') : 'refresh,move,album,map,share,download,delete';
+			let a = sels.length === 0 ? 'upload,newdir,album'+((navi.mode == 'd')?',refresh':'') : 'left,refresh,move,album,map,share,download,delete';
 			for(let i of a.split(',')){
 				if( !_p.can[i] || (t && i === 'info')){continue;}
+
 				if(!sels.length && i == 'album'){
 					i = 'albumc';
 					if(navi.mode == 'a' && navi.mval!='Albums'){
 						i = 'albumm';
 					}
 				}
-				let u = items[i];
-				if(navi.mode == 'a'){
-					if(i == 'album'){continue;}
-					if(i == 'delete'){u = 'Remove from Album';}
-				}
 
 				const li = _ce('li');
-				li.innerHTML = '<i class="ico-'+i+'"></i> '+u;
-				li.onclick = (e)=>{cSelect(who,i,e,li);};
+
+				if(i=='left'){
+					li.id = 'cmhd';
+					for(const j of 'left,right'.split(',')){
+						const w = _ce('i',{'class':'ico-'+j});
+						w.onclick = (e)=>{cSelect(who,j,e,w);};
+						li.appendChild(w);
+					}
+				}else{
+					let u = items[i];
+					if(navi.mode == 'a'){
+						if(i == 'album'){continue;}
+						if(i == 'delete'){u = 'Remove from Album';}
+					}
+
+					li.innerHTML = '<i class="ico-'+i+'"></i> '+u;
+					li.onclick = (e)=>{cSelect(who,i,e,li);};
+				}
+
 				cm.appendChild(li);
 				t++;
 			}
@@ -2024,8 +2065,7 @@ async function cMenu(e,dhis,who,rpt){
 					li.id = 'cmhd';
 					for(const j of 'info,refresh,download,share'.split(',')){
 						if(j=='refresh' && (_att(dhis,'data-ext') || !_p.can[j])){continue;}
-						const w = _ce('i');
-						w.className = 'ico-'+j;
+						const w = _ce('i',{'class':'ico-'+j});
 						w.onclick = (e)=>{cSelect(who,j,e,w);};
 						li.appendChild(w);
 					}
@@ -2125,7 +2165,6 @@ async function cMenu(e,dhis,who,rpt){
 				li.onclick = (e)=>{cSelect(who,i,e,li);};
 				cm.appendChild(li);
 			}
-			const li = _ce('li');
 			const ip = _ce('input');
 			_att(ip,'type','range');
 			_att(ip,'min',viewitms[v][0]);
@@ -2140,6 +2179,7 @@ async function cMenu(e,dhis,who,rpt){
 				navi.view[v] = ip.value;
 				db.conf.put('view',navi.view).catch(e=>{});
 			}
+			const li = _ce('li');
 			li.appendChild(ip);
 			li.onclick = (e)=>{e.stopPropagation();};
 			const dl = _ce('datalist');
@@ -2367,10 +2407,7 @@ function citySrch(e){
 		const id = _id('clat');
 		id.innerHTML = '';
 		for(const [k, v] of Object.entries(d)){
-			const o = _ce('option');
-			o.value = k;
-			o.textContent = v;
-			id.appendChild(o);
+			id.appendChild(_ce('option',{value: k}, {textContent: v}));
 		}
 	};
 	if(kwd.length>2){
@@ -2445,9 +2482,9 @@ const act_share = async (itm,fname) => {
 					const [id, fileName, fileid]=h[i].split('/');
 					const el = _qs('[data-i="'+fileid+'"]');
 					if(!el){continue;}
-					
+
 					pxp.msg('Downloading '+ (i+1)+' of '+h.length+'<br>'+fileName);
-					
+
 					const res = await fetch(el.href, { cache: "force-cache", signal: sigbort });
 
 					const rstrm = res.body.pipeThrough(new TransformStream({
@@ -2662,8 +2699,7 @@ function act_info(el,dir){
 		n.Place = v.textContent;
 	}
 
-	const t = _ce('table');
-	t.className = 'inf';
+	const t = _ce('table',{'class':'inf'});
 	for(const i in n){
 		const r = _ce('tr');
 
@@ -2689,6 +2725,32 @@ function act_info(el,dir){
 	});
 
 }
+
+function act_rot(act,id){
+	const [fid,d,name,fileid,single] = getselected(id);
+	if(!fid){return;}
+
+	popup('Confirmation','Rotate '+act+' '+name+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox" checked> Overwrite</label></p>',{
+		buttons: [
+			{
+				text: "No"
+			}, {
+				text: "Yes",
+				click: (html) => {
+					if(_id('tow').checked){
+						act += '-1';
+					}
+					fsTask('rotate', fid, act, id);
+					return true;
+				},
+				key: "Enter",
+				def: 1
+			}
+		],
+		bgclose: 0
+	});
+}
+
 
 function imageAlb(act,id,alb){
 	const [fid,d,name,fileid,single] = getselected(id);
@@ -2769,11 +2831,8 @@ function imageAlb(act,id,alb){
 
 
 function itick(n,t,c,ty='checkbox'){
-	const l = _ce('label');
-	l.className = 'togg';
-	const i = _ce('input');
-	_att(i,'type',ty);
-	_att(i,'name',n);
+	const l = _ce('label',{'class':'togg'});
+	const i = _ce('input',{'type':ty,'name':n});
 	if(c){_att(i,'checked','');}
 	l.appendChild(i);
 	l.appendChild(document.createTextNode(' ' + t));
@@ -2794,9 +2853,7 @@ function editAlb(aid,make,add){
 		mt.innerText = 'Last updated: '+relativeDate(a.mt);
 		el.appendChild(mt);
 	}
-	const an = _ce('input');
-	_att(an,'pattern', p);
-	an.value= a.name;
+	const an = _ce('input',{pattern: p, value: a.name});
 
 	const sd = _ce('div');
 	const sc = _ce('code');
@@ -2824,8 +2881,7 @@ function editAlb(aid,make,add){
 		}
 	};
 
-	const sn = _ce('input');
-	_att(sn,'pattern',p.replace(/>/,'> '));
+	const sn = _ce('input',{pattern: p.replace(/>/,'> ')});
 	if(a.share){
 		sn.value=a.share;
 		slnk(a.share);
@@ -2968,8 +3024,8 @@ function act_delete(id){
 		],
 		bgclose: 0
 	});
-
 }
+
 function act_download(id){
 	const [fid,d,name,fileid,single] = getselected(id);
 	if(!fid){return;}
@@ -3053,7 +3109,7 @@ function fsTask(task, fid, newitm, el, tst, tot, lmsg, err){
 			if(res.ok){
 				lmsg = '<br>'+res.msg;
 
-				if('delete,gps-tag'.includes(task)){
+				if('delete,gps-tag,rotate'.includes(task)){
 					if(itype==='dir'){
 						db.d.del(Dir.d[id][1]).catch(e=>{});
 					}else{
@@ -3158,8 +3214,7 @@ function expandMenu(){
 	if(navi.mode=='s'){
 		id = 0;
 		const m = getUrlID();
-		const s = _ce('a');
-		_att(s,'href',m.url);
+		const s = _ce('a',{href: m.url});
 		s.onclick = ()=>{searchList(m);return false;};
 		s.innerHTML = 'Search: <i>'+navi.kwd+'</i>';
 		cr.appendChild(s);
@@ -3167,8 +3222,7 @@ function expandMenu(){
 	const bc = (id,home) => {
 		let n = getFilename(Dir.d[id][0]);
 		if(n === '' && !home){return;}
-		const c = _ce('a');
-		_att(c,'href',getUrlID(id).url);
+		const c = _ce('a',{href: getUrlID(id).url});
 		c.onclick = genPage.bind(this, id, c);
 		if(home){
 			c.className = 'ico-home';
@@ -3263,16 +3317,29 @@ const idbload = async (mode,key)=>{
 
 let thumbabrt = new AbortController();
 
-const thumbLoader = async (updrefresh)=>{
+const thumbLoader = async (updrefresh, tst, tot)=>{
 	if(!navi.thumbs.length){
+		if(tst){wait(500,()=>{tst.dismiss();});}
 		if(updrefresh){genPage();}
 		return;
 	}
-	const [el, src, fid, url] = navi.thumbs.shift();
+
+	if(!tst){
+		tot = navi.thumbs.length;
+		tst = toast('T',{timeout:0,theme:'black',click:()=>{if(navi.thumbs.length){toast('Aborted');navi.thumbs=[];}},close:1});
+		tst.el.classList.add('loader');
+	}
+
+	const [el, src, fid, url, n] = navi.thumbs.shift();
 	const a = el.parentElement;
 	a.classList.add('loader');
 	thumbabrt = new AbortController();
 	const signal = thumbabrt.signal;
+
+	const cur = tot - navi.thumbs.length;
+	tst.update( cur +'/'+tot+' Generating Thumbnails<br/>'+n );
+	tst.bar(cur, tot);
+
 	try{
 		const response = await fetch(location.pathname+url, { signal });
 		const js = await response.json();
@@ -3290,11 +3357,11 @@ const thumbLoader = async (updrefresh)=>{
 			}).catch(e=>{});
 		}
 	}catch(e){
-		if(e.name === 'AbortError'){return;}
+		if(e.name === 'AbortError'){tst.dismiss();return;}
 		updrefresh=0;
 	}
 	a.classList.remove('loader');
-	thumbLoader(updrefresh);
+	thumbLoader(updrefresh, tst, tot);
 };
 
 
@@ -3524,8 +3591,7 @@ async function media(j, n, f, m ){
 	gs.classList.remove('fade');
 	gs.classList.add('anim');
 
-	const g = _ce('div');
-	g.classList.add('gallery','fade');
+	const g = _ce('div',{'class':'gallery fade'});
 	const rule = orderget();
 
 
@@ -3542,25 +3608,20 @@ async function media(j, n, f, m ){
 			for(const a in Dir.a){
 				const [id, name, qt, mt, own, family, share] = Dir.a[a];
 				const u = getUrlID({a: id, n: name});
-				const ah = _ce('a');
-				_att(ah,'href',u.url);
-				_att(ah,'data-aid',id);
+				const ah = _ce('a',{'class': 'stack', href: u.url, 'data-aid': id});
 				ah.onclick = genPage.bind(this, u, ah);
-				const im = _ce('img');
-				_att(im,'loading','lazy');
+				const im = _ce('img',{loading:'lazy'});
 				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
 				if(qt){
 					im.src = window.location.pathname + '?athmb='+id+'&mt='+mt;
 				}
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
-				const fo = _ce('div');
-				fo.className = 'info';
+				const fo = _ce('div',{'class':'info'});
 				const fnm = _ce('f-nm');
 				fnm.textContent = name + ' ('+qt+')' + (own? '':' ⇋') ;
 				fo.appendChild(fnm);
 				ah.appendChild(fo);
-				ah.className = 'stack';
 				rightMenu(ah,'alb');
 				g.appendChild(ah);
 				tQt+=qt;
@@ -3571,17 +3632,14 @@ async function media(j, n, f, m ){
 		if(navi.mval === 'Timeline'){
 			for(const t in j.i){
 				const u = getUrlID({t: t});
-				const ah = _ce('a');
-				_att(ah,'href',u.url);
+				const ah = _ce('a', {href: u.url});
 				ah.onclick = genPage.bind(this,u, ah);
-				const im = _ce('img');
-				_att(im,'loading','lazy');
+				const im = _ce('img', {loading: 'lazy'});
 				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
 				im.src = window.location.pathname + '?tthmb='+t+'&mt='+Dir.m;
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
-				const fo = _ce('div');
-				fo.className = 'info';
+				const fo = _ce('div',{'class':'info'});
 				const fnm = _ce('f-nm');
 				let w = t.split('-');
 				fnm.textContent = w[0] + ' '+ getMonth(w[1]) +' ('+j.i[t]+')';
@@ -3604,20 +3662,15 @@ async function media(j, n, f, m ){
 
 			for(const k in j.i[1]){
 				const u = getUrlID({k: k});
-				const ah = _ce('a');
-				_att(ah,'href',u.url);
+				const ah = _ce('a', {href: u.url});
 				ah.onclick = genPage.bind(this,u, ah);
-				const im = _ce('img');
-				_att(im,'loading','lazy');
+				const im = _ce('img', {loading: 'lazy'});
 				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
 				im.src = window.location.pathname + '?kthmb='+encodeURIComponent(k)+'&mt='+Dir.m;
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
-				const fo = _ce('div');
-				fo.className = 'info';
-				const fnm = _ce('f-nm');
-				fnm.textContent = k + ' ('+j.i[1][k]+')';
-				fo.appendChild(fnm);
+				const fo = _ce('div',{'class': 'info'});
+				fo.appendChild(_ce('f-nm',0, {textContent: k + ' ('+j.i[1][k]+')'}));
 				ah.appendChild(fo);
 				ah.className = 'stack';
 				g.appendChild(ah);
@@ -3626,11 +3679,8 @@ async function media(j, n, f, m ){
 			g.appendChild(_ce('br'));
 			for(const k in j.i[0]){
 				const u = getUrlID({k: k});
-				const ah = _ce('a');
-				_att(ah,'href',u.url);
+				const ah = _ce('a',{'class': "loaded", href: u.url}, {textContent: k + ' ('+j.i[0][k]+')'});
 				ah.onclick = genPage.bind(this,u, ah);
-				ah.textContent = k + ' ('+j.i[0][k]+')';
-				ah.classList.add("loaded");
 				g.appendChild(ah);
 				tQt++;
 			}
@@ -3670,16 +3720,12 @@ async function media(j, n, f, m ){
 			const id = parseInt(d,10);
 			const [dirpath, pid, mt, sz, qt] = Dir.d[id];
 
-			const ah = _ce('a');
-			_att(ah,'data-d', id);
-			_att(ah,'href',getUrlID(id).url);
+			const ah = _ce('a',{'class': 'dir', 'data-d': id, href: getUrlID(id).url});
 			ah.onclick = genPage.bind(this,id, ah);
-			const fldr = _ce('div');
-			fldr.className = 'fldr';
+			const fldr = _ce('div',{'class': 'fldr'});
 			const fldd = _ce('div');
 			if(qt){
-				const im = _ce('img');
-				_att(im,'loading','lazy');
+				const im = _ce('img', {loading: 'lazy'});
 				im.onload = ()=>{im.className='sh';ah.classList.add("loaded");};
 				im.onerror = ()=>{im.remove();};
 				im.src = window.location.pathname + '?fthmb='+id+'&mt='+mt;
@@ -3687,27 +3733,17 @@ async function media(j, n, f, m ){
 			}
 			fldr.appendChild(fldd);
 			ah.appendChild(fldr);
-			const fo = _ce('div');
-			fo.className = 'info';
+			const fo = _ce('div',{'class': 'info'});
 
-			const fnm = _ce('f-nm');
-			fnm.textContent = getFilename(dirpath);
-			fo.appendChild(fnm);
+			fo.appendChild(_ce('f-nm',0,{textContent: getFilename(dirpath)}));
 
-			const rd = _ce('f-mt');
-			rd.textContent = relativeDate(mt);
-			fo.appendChild(rd);
+			fo.appendChild(_ce('f-mt',0,{textContent: relativeDate(mt)}));
 
-			const fsz = _ce('f-sz');
-			fsz.textContent = filesize(sz);
-			fo.appendChild(fsz);
+			fo.appendChild(_ce('f-sz',0,{textContent: filesize(sz)}));
 
-			const fqt = _ce('f-qt');
-			fqt.textContent = qt;
-			fo.appendChild(fqt);
+			fo.appendChild(_ce('f-qt',0,{textContent: qt}));
 
 			ah.appendChild(fo);
-			ah.className = 'dir';
 			rightMenu(ah,'dir');
 			g.appendChild(ah);
 		}
@@ -3748,8 +3784,7 @@ async function media(j, n, f, m ){
 		if(!v.d){v.d = navi.dir;}
 		if(navi.mode!=='d'){tQt++; tSz += v.s;}
 		ii++;
-		const ah = _ce('a');
-		ah.id = 'imt'+ii;
+		const ah = _ce('a', {id: 'imt'+ii});
 
 		let p = Dir.d[v.d][0];
 		if(p !== ''){p+='/';}
@@ -3770,13 +3805,12 @@ async function media(j, n, f, m ){
 		if(v.ft){
 			_att(ah,'data-pswp-width', v.w);
 			_att(ah,'data-pswp-height', v.h);
-			const im = _ce('img');
-			_att(im,'loading','lazy');
+			const im = _ce('img', {loading: 'lazy'});
 			im.onload = imld;
 			if(v.th == 2){updrefresh = 1; navi.reload = 1;}
 			let thm = thumbUrl(v.d, v.n, 'mt='+v.m);
 			if(v.th){
-				navi.thumbs.push([im, thm, v.i, '?ithumb='+v.i+'&n='+encodeURIComponent(v.n)+'&'+v.m]);
+				navi.thumbs.push([im, thm, v.i, '?ithumb='+v.i+'&n='+encodeURIComponent(v.n)+'&'+v.m, v.n]);
 				thm='';
 			}
 			_att(im,'src', thm);
@@ -3790,51 +3824,35 @@ async function media(j, n, f, m ){
 		_att(ah,'href', url);
 
 
-		const tk = _ce('i');
-		tk.className = 'ticker';
+		const tk = _ce('i',{'class': 'ticker'});
 		tk.onclick = tickShow;
 		ah.appendChild(tk);
 		if(v.w){ah.appendChild(_ce('i-con'));}
 
-		const fo = _ce('div');
-		fo.className = 'info';
+		const fo = _ce('div',{'class': 'info'});
 
-		const fnm = _ce('f-nm');
-		fnm.textContent = v.n;
-		fo.appendChild(fnm);
+		fo.appendChild(_ce('f-nm',0,{textContent: v.n}));
 
-		const fmt = _ce('f-mt');
-		fmt.textContent = relativeDate(v.t);
-		fo.appendChild(fmt);
+		fo.appendChild(_ce('f-mt',0,{textContent: relativeDate(v.t)}));
 
-		const fsz = _ce('f-sz');
-		fsz.textContent = filesize(v.s);
-		fo.appendChild(fsz);
+		fo.appendChild(_ce('f-sz',0,{textContent: filesize(v.s)}));
 
 
 		if(v.w){
-			const rs = _ce('f-rs');
-			rs.textContent = v.w+'x'+v.h;
-			fo.appendChild(rs);
+			fo.appendChild(_ce('f-rs',0,{textContent: v.w+'x'+v.h}));
 		}
 
 
 		if(v.dev){
-			const dv = _ce('f-dev');
-			dv.innerHTML = '<i class="ico-camera"></i> '+v.dev;
-			fo.appendChild(dv);
+			fo.appendChild(_ce('f-dev',0,{innerHTML: '<i class="ico-camera"></i> '+v.dev}));
 		}
 
 		if(v.k){
-			const kw = _ce('f-kw');
-			kw.innerHTML = '<i class="ico-camera"></i> '+v.k;
-			fo.appendChild(kw);
+			fo.appendChild(_ce('f-kw',0,{innerHTML: '<i class="ico-camera"></i> '+v.k}));
 		}
 
 		if(v.city){
-			const gp = _ce('f-gps');
-			_att(gp,'data-loc', (v.lat/10000)+','+(v.lon/10000));
-			gp.innerHTML = '<i class="ico-map"></i> '+v.city;
+			const gp = _ce('f-gps',{'data-loc': (v.lat/10000)+','+(v.lon/10000)},{innerHTML: '<i class="ico-map"></i> '+v.city});
 			gp.onclick = (e) => {
 				e.stopPropagation();
 				e.preventDefault();
@@ -3847,9 +3865,7 @@ async function media(j, n, f, m ){
 
 		if(v.ft>1){
 			_att(ah,'data-pswp-type', 'video');
-			const dd = _ce('v-dur');
-			dd.textContent = vduration(v.dur);
-			fo.appendChild(dd);
+			fo.appendChild(_ce('v-dur',0,{textContent: vduration(v.dur)}));
 		}
 
 		ah.appendChild(fo);
