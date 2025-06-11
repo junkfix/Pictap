@@ -1,7 +1,7 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['2.0.1',2]; //[main, config]]
+const PIC_VER = ['2.0.2',2]; //[main, config]]
 
 define('PTM', $ptset ?? 1);
 if(get('sf')){sfile(get('sf'));}
@@ -25,14 +25,62 @@ if(PTM){
 	@ini_set('memory_limit', '512M');
 	@ini_set('max_execution_time', '0');
 	@ini_set('max_input_time', '-1');
-	
-	if(php_sapi_name() != 'cli'){
+
+
+	//command line
+	if (logger()) {
+		set_time_limit(0);
+		userAuth();
+
+		//$p=getopt("s:c:f:d:"); //print_r($p); exit;
+
+		$force = 0;
+
+		if (!globber(PICTAP->path_pictures, $force) ||
+		!($dbo = openDb()) ||
+		($stmt = $dbo->run("SELECT f.*, d.dir FROM ".PICTAP->db_prefix."files f INNER JOIN ".PICTAP->db_prefix."dirs d USING(dirid)", null, 2, __LINE__)) === false){exit(1);}
+
+		$rows = $stmt ?: [];
+
+		openDb(-1);
+		logger("Scan begins", 1);
+		$forcethumb = 0;
+		$forcescan = 0;
+		foreach ($rows as $r){
+			$f = $r['dir'].'/'.$r['file'];
+			if((int)$r['th']===2 || $forcescan){
+				logger('Scan /'.$f, 2);
+				if(!getExif($r)){logger('Error getExif() '.$f, 2); continue;}
+			}
+			if((int)$r['th']===1 || $forcethumb){
+				logger('Thum /'.$f, 2);
+				if(makeThumb($r,$forcethumb) === false){
+					logger('Error makeThumb() '.$f, 2);
+				}
+			}
+		}
+
+		if(PICTAP->db_type == 'sqlite'){
+			if(!($dbo = openDb())){echo 'Database Error';exit(1);}
+			logger("Database Optimize\n", 1);
+			$dbo->exec('PRAGMA optimize;');
+			$dbo->exec('VACUUM;');
+		}
+		logger("Checking for orphan thumbs", 1);
+		if(file_exists(PICTAP->path_pictures) && count(glob(glob_nobr(PICTAP->path_pictures)."/*"))>5 && count(glob(glob_nobr(PICTAP->path_thumbs)."/*"))>1 ){
+			del_orphan_thumbs(PICTAP->path_thumbs);
+		}
+		//TODO: keywords.py
+		//shell_exec("/usr/bin/nohup ".$cmd." >/dev/null 2>&1 &");
+
+	}else{
 		if(post('task')){
 			postTasks();
 		}else{
 			getTasks();
 		}
 	}
+	exit;
 }else{
 	$a = get('a');
 	if(!$a || empty(PICTAP->db_setup)){die;}
@@ -260,8 +308,9 @@ class MyDB {
 			error_log($m);
 			$this->rows = 0;
 			$this->lastid = 0;
+			$x = new Exception();
 			if($line){
-				logger('Line:'.$line.$m."\n".print_r($args, true));
+				logger('Line:'.$line.$m."\n".print_r($args, true)."\n".$x->getTraceAsString());
 			}
 		}
 		return false;
@@ -303,55 +352,7 @@ function logger($msg='', $level=3){
 	return $cli;
 }
 
-//command line
-if (PTM && logger()) {
-	set_time_limit(0);
-	userAuth();
 
-	//$p=getopt("s:c:f:d:"); //print_r($p); exit;
-
-	$force = 0;
-
-	if (!globber(PICTAP->path_pictures, $force) ||
-	!($dbo = openDb()) ||
-	($stmt = $dbo->run("SELECT f.*, d.dir FROM ".PICTAP->db_prefix."files f INNER JOIN ".PICTAP->db_prefix."dirs d USING(dirid)", null, 2, __LINE__)) === false){exit(1);}
-
-	$rows = $stmt ?: [];
-
-	openDb(-1);
-	logger("Scan begins", 1);
-	$forcethumb = 0;
-	$forcescan = 0;
-	foreach ($rows as $r){
-		$f = $r['dir'].'/'.$r['file'];
-		if((int)$r['th']===2 || $forcescan){
-			logger('Scan /'.$f, 2);
-			if(!getExif($r)){logger('Error getExif() '.$f, 2);}
-		}
-		if((int)$r['th']===1 || $forcethumb){
-			logger('Thum /'.$f, 2);
-			if(makeThumb($r,$forcethumb) === false){
-				logger('Error makeThumb() '.$f, 2);
-			}
-		}
-	}
-
-	if(PICTAP->db_type == 'sqlite'){
-		if(!($dbo = openDb())){echo 'Database Error';exit(1);}
-		logger("Database Optimize\n", 1);
-		$dbo->exec('PRAGMA optimize;');
-		$dbo->exec('VACUUM;');
-	}
-	logger("Checking for orphan thumbs", 1);
-	if(file_exists(PICTAP->path_pictures) && count(glob(glob_nobr(PICTAP->path_pictures)."/*"))>5 && count(glob(glob_nobr(PICTAP->path_thumbs)."/*"))>1 ){
-		del_orphan_thumbs(PICTAP->path_thumbs);
-	}
-	//TODO: keywords.py
-	//shell_exec("/usr/bin/nohup ".$cmd." >/dev/null 2>&1 &");
-
-	exit;
-
-}
 
 function glob_nobr($p){
 	return preg_match('/\[.+]/', $p)? str_replace(['[',']','\[','\]'],['\[','\]','[[]','[]]'], $p) : $p;
@@ -555,7 +556,7 @@ function updateFile($fileid, $c){
 	$s[] = $fileid;
 	$q = "UPDATE ".PICTAP->db_prefix."files SET ".implode(',',$col)." WHERE fileid = ?";
 
-	if( !($dbo = openDb()) || ($stmt = $dbo->run($q, $s, 0, __LINE__)) === false ){return false;}
+	if( !($dbo = openDb()) || $dbo->run($q, $s, 0, __LINE__) === false ){return false;}
 	return $dbo->rowCount();
 }
 
@@ -632,11 +633,11 @@ function validGps($lat, $lon) {
 
 function getExif(&$r){
 	$rp = joinp($r['dir'],$r['file']);
-	foreach(['ft','tk','mt','th','fileid'] as $i){
+	foreach(['ft','tk','mt','th','fileid','dirid'] as $i){
 		if(is_numeric($r[$i])){$r[$i] = (int)$r[$i];}
 	}
-	$fullp = PICTAP->path_pictures . $rp;
-	if(!file_exists($fullp)){
+	$path = PICTAP->path_pictures . $rp;
+	if(!file_exists($path)){
 		delFileRow($r);
 		return 0;
 	}
@@ -644,7 +645,7 @@ function getExif(&$r){
 	openDb(-1);
 	if(logger() || locker(30)){
 		ignore_user_abort(true);
-		$exif = json_decode(shell_exec(escapeshellarg(PICTAP->bin_exiftool).' -n -json '.$lf.' '.escapeshellarg($fullp)), true);
+		$exif = json_decode(shell_exec(escapeshellarg(PICTAP->bin_exiftool).' -n -json '.$lf.' '.escapeshellarg($path)), true);
 		locker();//unlocks
 	}
 	if(empty($exif)) {
@@ -652,6 +653,24 @@ function getExif(&$r){
 		return 0;
 	}
 	$exif=$exif[0];
+
+
+	$cxt = strtolower($exif['FileTypeExtension'] ?? '');
+	$exa = splitExt($path);
+	if(!empty(PICTAP->fix_ext) && $cxt && $exa[2] != $cxt){
+		$npath = $exa[0].'.' . $cxt;
+		logger("FixExt: $path to $npath", 2);
+		updateDir(['dirid'=>$r['dirid']],['mt'=>0]);
+		delFileRow($r);
+		$s = safe_rename($path, $npath);
+		if(!$s[0]){
+			logger("RenameError: $path to $npath");
+		}
+		return 0;
+	}
+
+	
+	
 	$taken = 0;
 	$r['tk'] = $r['mt'];
 	$t = fileDate($r['file']);
@@ -833,15 +852,18 @@ function loopDir(&$dir, &$dirs, &$dirlist, &$old, &$dirsize, &$totalfiles, $forc
 				if($filename !== $cleanname){
 					$npath = $dir . '/' . $cleanname;
 					logger("Rename: $path to $npath", 2);
-					if(!($r = safe_rename($path, $npath))){
+					$r = safe_rename($path, $npath);
+					if(!$r[0]){
 						logger("RenameError: $path to $npath");
 						continue;
 					}
 					$filename = basename($r[1]);
 					$path = $dir.'/'.$filename;
+					
 				}
 				if($filesize){
 					$nameonly = splitExt($path);
+										
 					if(isset($dupchecker[$nameonly[0]])){
 						$q=1;
 						while(file_exists($nameonly[0].'_'.$q.'.'.$nameonly[2])){
@@ -851,8 +873,8 @@ function loopDir(&$dir, &$dirs, &$dirlist, &$old, &$dirsize, &$totalfiles, $forc
 						$filename = basename($npath);
 
 						logger("Rename: $path to $npath", 2);
-						safe_rename($path,$npath);
-						if(!safe_rename($path, $npath)){
+						$r = safe_rename($path, $npath);
+						if(!$r[0]){
 							logger("RenameError: $path to $npath");
 							continue;
 						}
@@ -962,14 +984,14 @@ function sanitise_name($name,$isdir=0){
 	return $n[0] . '.' .$n[2];
 }
 
-function safe_rename($oldpath, $newpath, $ret = 0) {
+function safe_rename($oldpath, $newpath, $ret = 0, $ap = '') {
 	if (file_exists($newpath)) {
 		$s = splitExt($newpath);
 		$e = $s[2];
 		$b = $s[0];
 		$c = 1;
 		do {
-			$n = $b . '_' . $c . '.' . $e;
+			$n = $b . '_' . (($ap!=='' && $c<2)? $ap : $c) . '.' . $e;
 			$c++;
 		} while (file_exists($n));
 		$newpath = $n;
@@ -1931,6 +1953,7 @@ function pageConfig($oldsetup){
 		'auto_hide_slideshow_ui'=> ['number', 0, 1,'0 = disable, 4 = after 4 sec ...'],
 		'max_mp' 		=> ['number', 6000 * 5000, 1,'Width x Height, Larger images may not get thumbnails'],
 		'auto_rename' 	=> ['tick', 0, 1, 'Auto Rename IMG_/VID_date_time.* to date_time.*'],
+		'fix_ext' 	=> ['tick', 1, 1, 'Auto fix incorrect extensions'],
 		'skip_corrupt' 	=> ['tick', 1, 1, 'Do not attempt to regenerate thumbnails that have already failed once.'],
 		'debug'			=> ['select', '2', 1, 'Debug Level',['0'=>'0: Off','1'=>'1: Verbose (All)','2'=>'2: Info (Some)','3'=>'3: Warnings only']],
 		'debug_file' 	=> ['text', $db.'/debug.log', 0,'Debug file (optional) eg. '. $db.'/debug.log'],
@@ -1955,14 +1978,20 @@ function pageConfig($oldsetup){
 			if($v[0] === 'number'){$i = (int)$i;}
 			if($v[0] === 'tick'){$i = $i? 1 : 0;}
 			$input[$k]=$i;
+			if(str_starts_with($k,'path_')||str_starts_with($k,'bin_')||str_starts_with($k,'url_')||$k==='debug_file'){
+				$input[$k]=str_replace('\\','/',$i);
+			}
 			if(str_starts_with($k,'db')){$dbhashn .= '#'.$i;}
 		}
 		$dpf = preg_replace("/[^a-z0-9_]/", '', $input['db_prefix']);
 		$input['debug'] = (int)$input['debug'];
 		$input['db_prefix'] = $dpf;
 		$input['salt'] = $setup->salt;
+		
+		
+
 		foreach(['pictures','thumbs','recycle','data','shared'] as $s){
-			$i = rtrim(str_replace('\\','/',$input['path_'.$s]),'/');
+			$i = rtrim($input['path_'.$s],'/');
 			$input['path_'.$s] = $i;
 			if($i){
 				if(!(is_dir(dirnm($i)) && makeDir($i))){
@@ -2147,6 +2176,24 @@ function postTasks(){
 	$name = trim(preg_replace('/\s+/', ' ', str_replace(['\\','/'],' ',post('name'))));
 	$pp = PICTAP->db_prefix;
 
+	if($task === 'rotate' && userCan('edit')){
+		getPostFile($fr, $path);
+		$ori = (int)$fr['ori'];
+		$n = explode('-',post('new'));
+		$_POST['o'] = $n[1] ?? '0';
+		if($fr['ft'] > 1){
+			$r = (($ori + (($n[0] == 'left')? 270 : 90)) % 360);
+			$_POST['vrot']='1';
+		}else{
+			$m = [
+				'left' => ['0'=>8,'1'=>8,'2'=>7,'3'=>6,'4'=>5,'5'=>2,'6'=>1,'7'=>4,'8'=>3],
+				'right' => ['0'=>6,'1'=>6,'2'=>5,'3'=>8,'4'=>7,'5'=>4,'6'=>3,'7'=>2,'8'=>1]
+			];
+			$r = $m[$n[0]][$ori] ?? 0;
+		}
+		$_POST['r'] = $r.'';
+		$task = 'edit'; $fr=$path=null;
+	}
 	if($task === 'album' && userCan('album')){
 		$act=post('act');
 		if(!($dbo = openDb())){sendjs(0,'Db Error');}
@@ -2483,27 +2530,28 @@ function postTasks(){
 		foreach(['w','h','x','y','r','o'] as $i){
 			$p[$i]=intval(post($i));
 		}
-		if(!$p['r'] && (!$p['w'] || !$p['h'])){
+		$rot = ($p['r'] || post('vrot'));
+		$resize = ($p['w'] && $p['h']);
+		$vcut = post('vcut');
+		$delth = 0;
+		if( !$vcut && !$vrot && !$resize){
 			sendjs(0,"Nothing to do");
 		}
-		if(!$p['o']){
+		if(!$p['o'] && ($rot || $resize)){
 			$npath = safe_rename(0,$path,1);
 			if (!copy($path,$npath)){
 				sendjs(0,"Copy failed ".relative($npath));
 			}
 			$path = $npath;
-		}else{
-			del_thumb(relative($path));
 		}
 
 		$ef = escapeshellarg($path);
-		if($p['r']){
-			$s = (PHP_SHLIB_SUFFIX==='dll')?'"':"'";
+		if($rot){
 			$i = '-Orientation='.$p['r'];
-			if(post('vrot')){$i = '-rotation<${rotation;$_ += '.$p['r'].'}';}
+			if(post('vrot')){$i = '-Rotation='.$p['r'].'';}
 
-			$cmd = escapeshellarg(PICTAP->bin_exiftool).' -n '.$s.$i.$s.' -m -api largefilesupport=1 -overwrite_original '.$ef;
-
+			$cmd = escapeshellarg(PICTAP->bin_exiftool)." -n $i -m -api largefilesupport=1 -overwrite_original ".$ef;
+			
 			if(locker(15)){
 				ignore_user_abort(true);
 				exec($cmd, $output,	$result);
@@ -2515,15 +2563,44 @@ function postTasks(){
 			if ( 0 !== $result) {
 				sendjs(0,"exiftool failed ".implode('<br>',$output)."<br>".$cmd);
 			}
+			$delth = 1;
+
 		}
-		if($p['w'] && $p['h']){
+		if($resize){
 			exec(escapeshellarg(PICTAP->bin_jpegtran).' -optimize -copy all -crop '.$p['w'].'x'.$p['h'].'+'.$p['x'].'+'.$p['y'].' -outfile '.$ef.' '.$ef, $output, $res);
 			if ( 0 !== $res) {
 				sendjs(0,"jpegtran failed ".implode('',$output));
 			}
+			$delth = 1;
 		}
-		scanFolder(dirnm($path));
-		sendjs(1,"Edited: ".basename($path));
+
+		if($delth && $p['o']){
+			del_thumb(relative($path));
+		}		
+		
+		$ms = "Edited: ".basename($path);
+		if($vcut){
+			$ss = floatval(post('ss'));
+			$to = floatval(post('to'));
+			$au = post('aud')? '' : ':v';
+			$ext = strtolower(splitExt($path)[2]);
+			$nn = safe_rename(0, $path, 1, round($ss).'-'.round($to));
+			$tne = escapeshellarg($nn.".tmp");
+			$nne = escapeshellarg($nn);
+			$cmd = escapeshellarg(PICTAP->bin_ffmpeg)." -i $ef -ss $ss -to $to -map 0$au -c copy -movflags use_metadata_tags -map_metadata 0 -f $ext $tne";
+			if(PHP_SHLIB_SUFFIX==='dll'){
+				$cmd = 'start /B cmd /c "'.$cmd.' && move '.str_replace('/','\\',$tne.' '.$nne).'"';
+				pclose(popen($cmd, 'r'));
+			}else{
+				$cmd = 'nohup '.$cmd.' && mv '.$tne.' '.$nne.' > /dev/null 2>&1 & echo $!';
+				exec($cmd);
+			}
+			$ms = "Editing in the background: ".basename($nn);
+		}
+		
+		logger("CREdit: $path", 2);
+		if(!$vcut){scanFolder(dirnm($path));}
+		sendjs(1,$ms);
 
 
 
@@ -3124,6 +3201,7 @@ function htmldoc($config='',$lightbox='',$js=''){
 	$p['can']['map']=$p['can']['edit'];
 	$p['can']['refresh']=$p['can']['edit'];
 	$p['can']['thumb']=$p['can']['edit'];
+	$p['can']['left']=$p['can']['edit'];
 	$p['can']['eday']=$p['can']['search'];
 
 	$ht .= "const _p = " . json_encode($p) . ";\n";
