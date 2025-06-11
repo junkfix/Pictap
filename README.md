@@ -18,11 +18,12 @@ Unlike other online solutions, Pictap is tailored specifically for home users se
 * **Security Features:** Implement measures such as limiting login attempts and enabling global logout, passwords are stored as hash in config file.
 * **Media Support:** Pictap supports both videos and images using PhotoSwipe.
 * **Search:** Search media by name, city, country, state, exif device name.
-* **Image Editing:** Perform lossless crop, rotation, and flipping directly from the browser.
-* **Video Rotation:** Rotate mp4 videos losslessly.
+* **Image Editing:** Perform lossless crop, rotation, and flipping directly from the browser (also supports batch editing).
+* **Video Rotation:** Rotate mp4 videos losslessly (also supports batch editing).
+* **Video Trim:** Trim mp4 videos losslessly, can also mute audio.
 * **Sorting Options:** Sort media by various criteria including name, date, size, duration, filetype and dimension.
 * **Persistent Preferences:** Remember user preferences for sorting and scroll position on the device.
-* **GPS Editing:** Edit GPS location information for media files.
+* **GPS Editing:** Edit GPS location information for media files (also supports batch editing).
 * **Map Integration:** View image locations on Google Maps.
 * **Animated Video Thumbnails:** Enjoy animated thumbnails for video previews.
 * **Custom Folder Images:** Set custom folder images directly from the browser.
@@ -80,7 +81,7 @@ WEBROOT
 
 ### TODO
 
-* Lossless Video Trim using ffmpeg
+* ~Lossless Video Trim using ffmpeg~
 * Additional EXIF/IPTC Keywords/Tags from images
 * Online update
 * Add more view modes / improve and arrange UI / dark / light modes
@@ -94,6 +95,7 @@ WEBROOT
 * Create cron tasks to monitor changes in the image folder
 * Auto upload for mobile (when PWA can remember directory permission across the sessions)
 * Add custom new location places in the gps databases
+* Fix EXIF Date taken from the browser
 * ~Support Mysql/Postgres database engines~
 
 ### Screenshots
