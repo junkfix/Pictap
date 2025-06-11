@@ -1,4 +1,4 @@
-/*! Pictap Gallery 2.0.4
+/*! Pictap Gallery 2.0.5
 https://github.com/junkfix/Pictap */
 
 
@@ -2517,7 +2517,7 @@ const act_share = async (id) => {
 							await navigator.share(data);
 						}catch(e){
 							console.error(e);
-							let e = JSON.stringify(e);
+							e = JSON.stringify(e);
 							if(e.length>3){
 								wait(500,()=>{popup(e,'Share failed');});
 							}
