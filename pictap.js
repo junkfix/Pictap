@@ -447,7 +447,7 @@ function post(opt){
 		if(response.status === 200){
 			return response.json();
 		}else if(response.status === 401){
-			popup('Error','Please Login');
+			popup('Please Login','Error');
 			wait(1000,()=>{ location.reload(); });
 			throw new Error('Not Logged in');
 		}else{
@@ -537,7 +537,7 @@ function toast(message, opts = {}){
 }
 
 
-function popup(head, html='', options={}){
+function popup(html='', head, options={}){
 	options = Object.assign({
 		buttons: [{
 				text: "Close",
@@ -573,7 +573,7 @@ function popup(head, html='', options={}){
 	};
 
 	const pressed = (btn, html) => {
-		if( !btn.click || btn.click(html)){
+		if( !btn.click || btn.click(html, pp)){
 			close();
 		}
 	};
@@ -633,7 +633,13 @@ function popup(head, html='', options={}){
 	const resz = () => {
 		pop_el.style.top = (window.pageYOffset + Math.max(100,(window.innerHeight - pop_el.offsetHeight) / 2))+'px';
 	};
-
+	const pp = {
+		head: (h) => { hd.innerHTML = h;},
+		msg: (msg) => { section.innerHTML = msg;},
+		btn: (bx) => { options.buttons = bx; ft.innerHTML = ''; fbtn();},
+		bar: (c, t) => { nav.style.width = ((c / t) * 100) + '%';},
+		close
+	};
 
 	resz();
 	pop.classList.add('popfade');
@@ -645,13 +651,7 @@ function popup(head, html='', options={}){
 		resz();
 	});
 
-	return {
-		head: (h) => { hd.innerHTML = h;},
-		msg: (msg) => { section.innerHTML = msg;},
-		btn: (bx) => { options.buttons = bx; ft.innerHTML = ''; fbtn();},
-		bar: (c, t) => { nav.style.width = ((c / t) * 100) + '%';},
-		close
-	};
+	return pp;
 
 }
 
@@ -927,13 +927,13 @@ async function act_upload(hide,appup){
 
 function act_exit(i){
 	const t = {1:'',2:' from ALL Devices'};
-	popup('Confirmation', 'Log Out'+t[i]+'?',{
+	popup('Log Out'+t[i]+'?','Confirmation', {
 		buttons: [
 			{
 				text: "No"
 			},{
 				text: "Yes",
-				click: (html) => {
+				click: (html, pp) => {
 					lsclear();
 					post({params:'logout='+i});
 					return true;
@@ -1077,13 +1077,13 @@ function act_edit(atag){
 		}
 
 		if(!u){toast('No Changes'); tclose.click();return;}
-		popup('Confirmation','Save '+file+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox" checked> Overwrite</label></p>',{
+		popup('Save '+file+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox" checked> Overwrite</label></p>','Confirmation',{
 			buttons: [
 				{
 					text: "No"
 				}, {
 					text: "Yes",
-					click: (html) => {
+					click: (html, pp) => {
 						if(_id('tow').checked){
 							u += '&o=1';
 						}
@@ -1819,9 +1819,7 @@ async function cMenu(e,dhis,who,rpt){
 				}
 				switch(action){
 					case "share":{
-						const filen = _qs('f-nm',dhis).textContent;
-						const f = {};f[filen]=1;
-						act_share(f,filen);
+						act_share(dhis);
 						break;
 					}
 					case "download":{
@@ -1911,13 +1909,13 @@ async function cMenu(e,dhis,who,rpt){
 						break;
 					}
 					case "newdir":{
-						popup('Confirmation','Create New folder<br/><input type="text" id="popinput" value="" autocomplete="off">',{
+						popup('Create New folder<br/><input type="text" id="popinput" value="" autocomplete="off">','Confirmation',{
 							buttons: [
 								{
 									text: "No"
 								}, {
 									text: "Yes",
-									click: (html) => {
+									click: (html, pp) => {
 										const sel = _qs('#popselect',html);
 										const i = _qs('#popinput',html);
 										if(!i.value){return true;}
@@ -2430,120 +2428,109 @@ function citySrch(e){
 }
 
 
-const act_share = async (itm,fname) => {
+const act_share = async (id) => {
 	if(!('canShare' in navigator)){
 		toast('Share not supported');
 		return;
 	}
-	let sz;
-	if(!itm){
-		itm = navi.ticked;
-		sz = _id('selected').innerHTML;
-	}else{
-		sz = fname;
-	}
-	if(itm){
-		const h = Object.keys(itm);
-		if(h.length){
-			const aborter = new AbortController();
-			const sigbort = aborter.signal;
+	const [fid,d,name,fileid,single] = getselected(id);
+	if(!fid){return;}
 
-			const rstrmArr = async (rstrm, sigbort) => {
-				const chunks = [];
-				const reader = rstrm.getReader();
+	if(fid.length){
+		const aborter = new AbortController();
+		const sigbort = aborter.signal;
 
-				while (true){
-					const { done, value } = await reader.read();
-					if(sigbort && sigbort.aborted){
-						reader.cancel();
-						toast('Download aborted.');
-						throw new Error('Download aborted');
-					}
-					if(done){
-						break;
-					}
+		const rstrmArr = async (rstrm, sigbort) => {
+			const chunks = [];
+			const reader = rstrm.getReader();
 
-					chunks.push(value);
+			while (true){
+				const { done, value } = await reader.read();
+				if(sigbort && sigbort.aborted){
+					reader.cancel();
+					toast('Download aborted.');
+					throw new Error('Download aborted');
+				}
+				if(done){
+					break;
 				}
 
-				return new Blob(chunks);
-			};
-			let dBytes = 0;
-
-			const fcontent = [];
-
-			const pxp = popup('0.00%','',{buttons:[{text:'Stop',key: 'escape',def: 1,click: async (html) => {
-				aborter.abort();
-				return true;
-			}}],bgclose: 0});
-
-			try{
-				for(let i = 0; i < h.length; i++){
-					const [id, fileName, fileid]=h[i].split('/');
-					const el = _qs('[data-i="'+fileid+'"]');
-					if(!el){continue;}
-
-					pxp.msg('Downloading '+ (i+1)+' of '+h.length+'<br>'+fileName);
-
-					const res = await fetch(el.href, { cache: "force-cache", signal: sigbort });
-
-					const rstrm = res.body.pipeThrough(new TransformStream({
-						transform(chunk, controller){
-							dBytes += chunk.length;
-							pxp.head(((dBytes/navi.ticksize)*100).toFixed(2) + '%');
-							pxp.bar(dBytes, navi.ticksize);
-							controller.enqueue(chunk);
-						}
-					}));
-
-					const blob = new Blob([await rstrmArr(rstrm, sigbort)], { type: res.headers.get('Content-Type') });
-					fcontent.push({ blob, fileName });
-				}
-			}catch(error){
-				toast('Download error: '+ error.message);
-			} finally {
-				aborter.abort();
+				chunks.push(value);
 			}
+			return new Blob(chunks);
+		};
+		let dBytes = 0;
 
-			pxp.bar(0, 1);
+		const fcontent = [];
 
-			const data = {
-				files: fcontent.map(({ blob, fileName }) => {
-					return new File([blob], fileName, {
-						type: blob.type,
-					});
-				})
-			};
-			pxp.head('Confirmation');
-			pxp.msg('Share?<br>'+sz);
-			pxp.btn([
-				{
-					text: "No"
-				},{
-					text: "Yes",
-					click: async (html) => {
-						let err = 0;
-						if(navigator.canShare(data)){
-							try{
-								await navigator.share(data);
-							}catch(e){
-								err = 1;
-							}
-						}else{
-							err = 1;
-						}
-						if(err){
-							wait(500,()=>{
-								popup('Error','Share failed or too large.');
-							});
-						}
-						return true;
-					},
-					key: "Enter",
-					def: 1
-				}
-			]);
+		const pxp = popup('','0.00%',{buttons:[{text:'Stop',key: 'escape',def: 1,click: async (html, pp) => {
+			aborter.abort();
+			return true;
+		}}],bgclose: 0});
+
+		try{
+			for(let i = 0; i < fid.length; i++){
+				const [id, fileName, fileid]=fid[i].split('/');
+				const el = _qs('[data-i="'+fileid+'"]');
+				if(!el){continue;}
+
+				pxp.msg('Downloading '+ (i+1)+' of '+fid.length+'<br>'+fileName);
+
+				const res = await fetch(el.href, { cache: "force-cache", signal: sigbort });
+
+				const rstrm = res.body.pipeThrough(new TransformStream({
+					transform(chunk, controller){
+						dBytes += chunk.length;
+						pxp.head(((dBytes/navi.ticksize)*100).toFixed(2) + '%');
+						pxp.bar(dBytes, navi.ticksize);
+						controller.enqueue(chunk);
+					}
+				}));
+
+				const blob = new Blob([await rstrmArr(rstrm, sigbort)], { type: res.headers.get('Content-Type') });
+				fcontent.push({ blob, fileName });
+			}
+		}catch(error){
+			toast('Download error: '+ error.message);
+		} finally {
+			aborter.abort();
 		}
+
+		pxp.bar(0, 1);
+		const data = {
+			files: fcontent.map(({ blob, fileName }) => {
+				return new File([blob], fileName, {
+					type: blob.type,
+				});
+			})
+		};
+		pxp.head('Confirmation');
+		pxp.msg('Share?<br>'+name);
+		pxp.btn([
+			{
+				text: "No"
+			},{
+				text: "Yes",
+				click: async (html, pp) => {
+					if(navigator.canShare(data)){
+						try{
+							await navigator.share(data);
+						}catch(e){
+							console.error(e);
+							let e = JSON.stringify(e);
+							if(e.length>3){
+								wait(500,()=>{popup(,'Share failed');});
+							}
+						}
+					}else{
+						wait(500,()=>{popup('Not supported: navigator.canShare()','Share failed');});
+					}
+					return true;
+				},
+				key: "Enter",
+				def: 1
+			}
+		]);
 	}
 };
 
@@ -2604,7 +2591,7 @@ function act_map(id){
 		}
 	}
 
-	popup('Confirmation','New GPS for '+name+'<p><input type="text" id="map" value="'+map+'" list="clat"><datalist id="clat">'+city+'</datalist></p>',{
+	popup('New GPS for '+name+'<p><input type="text" id="map" value="'+map+'" list="clat"><datalist id="clat">'+city+'</datalist></p>','Confirmation',{
 		buttons: [
 			{
 				text: "No"
@@ -2636,7 +2623,7 @@ function act_rename(id){
 	if(!fid){return;}
 
 
-	popup('Confirmation','Rename '+name+' to<br/><input type="text" id="popinput" value="'+name+'" required autocomplete="off">',{
+	popup('Rename '+name+' to<br/><input type="text" id="popinput" value="'+name+'" required autocomplete="off">','Confirmation',{
 		buttons: [
 			{
 				text: "No"
@@ -2714,7 +2701,7 @@ function act_info(el,dir){
 		t.appendChild(r);
 	}
 
-	popup('Info',t,{
+	popup(t,'Info',{
 		buttons: [
 			{
 				text: "Close",
@@ -2730,7 +2717,7 @@ function act_rot(act,id){
 	const [fid,d,name,fileid,single] = getselected(id);
 	if(!fid){return;}
 
-	popup('Confirmation','Rotate '+act+' '+name+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox" checked> Overwrite</label></p>',{
+	popup('Rotate '+act+' '+name+'?<p><label><input id="tow" style="width:auto" name="tow" type="checkbox" checked> Overwrite</label></p>','Confirmation',{
 		buttons: [
 			{
 				text: "No"
@@ -2765,7 +2752,7 @@ function imageAlb(act,id,alb){
 		if(!alb && !alist.length){alb='c';}
 		if(!alb){alb=alist[0][0];}
 		alist.unshift(['c','-- Create a New Album --']);
-		popup('Confirmation','Add '+name+' to Album',{
+		popup('Add '+name+' to Album','Confirmation',{
 			buttons: [
 				{
 					text: "No"
@@ -2801,7 +2788,7 @@ function imageAlb(act,id,alb){
 		});
 	}else{
 		const ab = albObj();
-		popup('Confirmation','Remove '+name+' from '+ab[navi.mval].name+'?',{
+		popup('Remove '+name+' from '+ab[navi.mval].name+'?','Confirmation',{
 			buttons: [
 				{
 					text: "No"
@@ -2909,7 +2896,7 @@ function editAlb(aid,make,add){
 	el.appendChild(fm.l);
 	el.appendChild(sd);
 
-	popup((aid?'Edit':'Create')+' Album: '+a.name,el,{
+	popup(el,(aid?'Edit':'Create')+' Album: '+a.name,{
 		buttons: [
 			{
 				text: "Close"
@@ -2947,7 +2934,7 @@ function editAlb(aid,make,add){
 function remAlb(aid){
 	const a = albObj();
 	if(!a[aid]){toast('No Album');return;}
-	popup('Remove Album "'+a[aid].name+'"?','',{
+	popup('','Remove Album "'+a[aid].name+'"?',{
 		buttons: [
 			{
 				text: "No"
@@ -2981,7 +2968,7 @@ function act_move(id){
 	const [fid,d,name,fileid,single] = getselected(id);
 	if(!fid){return;}
 
-	popup('Confirmation','Move '+name+' to',{
+	popup('Move '+name+' to','Confirmation',{
 		buttons: [
 			{
 				text: "No"
@@ -3008,7 +2995,7 @@ function act_delete(id){
 	const [fid,d,name,fileid,single] = getselected(id);
 	if(!fid){return;}
 
-	popup('Confirmation','Delete '+name+' ?',{
+	popup('Delete '+name+' ?','Confirmation',{
 		buttons: [
 			{
 				text: "No"
@@ -3036,7 +3023,7 @@ function set_thumb(id){
 	const [fid,d,name,fileid,single] = getselected(id);
 	if(!fid){return;}
 
-	popup('Set Thumbnail', name+' to',{
+	popup(name+' to','Set Thumbnail', {
 		buttons: [
 			{
 				text: "No"
