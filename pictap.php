@@ -2534,7 +2534,7 @@ function postTasks(){
 		$resize = ($p['w'] && $p['h']);
 		$vcut = post('vcut');
 		$delth = 0;
-		if( !$vcut && !$vrot && !$resize && !$rot){
+		if( !$vcut && !post('vrot') && !$resize && !$rot){
 			sendjs(0,"Nothing to do");
 		}
 		if(!$p['o'] && ($rot || $resize)){
