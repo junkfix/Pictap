@@ -386,7 +386,7 @@ function del_orphan_thumbs($file){
 	if( $f[2] != 'webp' ){return;}
 	$count = glob(glob_nobr(PICTAP->path_pictures . relativethumb($f[0])).'.*');
 	if(!count($count)){
-		if (!@unlink(file)) {
+		if (!@unlink($file)) {
 			logger('Failed to remove thumb: ' . relativethumb($file), 2);
 		} else {
 			logger('Removed Thumb: ' . relativethumb($file), 2);
