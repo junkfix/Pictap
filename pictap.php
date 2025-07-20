@@ -504,7 +504,7 @@ function delDirRow($path){
 
 function getFileIds($dirid){
 	if(!($dbo = openDb()) ||
-	($stmt = $dbo->run("SELECT f.fileid, f.file, d.dir FROM ".PICTAP->db_prefix."files f INNER JOIN ".PICTAP->db_prefix."dirs d USING(dirid) WHERE dirid = ?;", [$dirid], 2, __LINE__)) === false ){return false;}
+	($stmt = $dbo->run("SELECT f.*, d.dir FROM ".PICTAP->db_prefix."files f INNER JOIN ".PICTAP->db_prefix."dirs d USING(dirid) WHERE dirid = ?;", [$dirid], 2, __LINE__)) === false ){return false;}
 	return $stmt ?: [];
 }
 
