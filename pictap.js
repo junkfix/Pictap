@@ -1,4 +1,4 @@
-/*! Pictap Gallery 2.0.5
+/*! Pictap Gallery 2.0.8
 https://github.com/junkfix/Pictap */
 
 
@@ -100,25 +100,23 @@ const _id = (id) => document.getElementById(id);
 const _qs = (q, el) => (el || document).querySelector(q);
 const _qsa = (q, el) => Array.from((el || document).querySelectorAll(q));
 
-//here p = innerHTML/textContent =..., m = appendChild(...)
+const _tn = (t) => document.createTextNode(t);
+//here p = innerHTML/textContent =..., m = appendChild([m])
 const _ce = (t, att, p, m) => {
 	t = document.createElement(t);
 	if(att){
 		for(const k in att){_att(t, k, att[k]);}
 	}
-	const pp = (e,x) => {
-		for (const k in e) {
-			if(x){
-				t[k] = e[k];
-			}else{
-				(Array.isArray(e[k]) ? e[k] : [e[k]]).forEach(v =>{
-					t[k](v);
-				});
+	if(p){
+		for(const i in p) {
+			t[i] = p[i];
 			}
 		}
-	};
-	if(p){pp(p,1);}
-	if(m){pp(m);}
+	if(m){
+		(Array.isArray(m) ? m : [m]).forEach(i => {
+			if(i){t.appendChild(i);}
+		});
+	}
 	return t;
 };
 
@@ -373,7 +371,7 @@ function mydb(tb){
 function sharedView(f){
 	const g = _qs('.gallery');
 	f.items.forEach(v=>{
-		const ah = _ce('a', {'class': 'file', style: '--ratio:'+( (v.h) ? v.w + '/' + v.h : '4/3')});
+		const ah = _ce('a', {href: f.url + v.fileid + 'f-'+encodeURIComponent(v.file)+'?mt='+v.mt, 'class': 'file', style: '--ratio:'+( (v.h) ? v.w + '/' + v.h : '4/3')});
 		if(v.ft){
 			_att(ah,'data-pswp-width', v.w);
 			_att(ah,'data-pswp-height', v.h);
@@ -387,14 +385,12 @@ function sharedView(f){
 			ah.innerHTML = svgExt(ext);
 			ah.classList.add('loaded');
 		}
-		const fo = _ce('div',{'class':'info'});
-		fo.appendChild(_ce('f-nm',0,{textContent: v.file}));
+		const fo = _ce('div',{'class':'info'},0,_ce('f-nm',0,{textContent: v.file}));
 		if(v.ft>1){
 			_att(ah,'data-pswp-type', 'video');
 			fo.appendChild(_ce('v-dur',0,{textContent: vduration(v.dur)}));
 		}
 		ah.appendChild(fo);
-		_att(ah,'href', f.url + v.fileid + 'f-'+encodeURIComponent(v.file)+'?mt='+v.mt);
 		g.appendChild(ah);
 	});
 	const lbox = new PhotoSwipeLightbox({
@@ -417,8 +413,20 @@ function sharedView(f){
 	lbox.init();
 
 	//fix back btn
-	if(!history.state||!history.state.pswp||history.state.path!==location.href){history.pushState({pswp:true,path:location.href},null,location.href);}
-	window.addEventListener('popstate',function(e){if(typeof pswp==="object"&&pswp&&pswp.isOpen){history.pushState({pswp:true,path:location.href},null,location.href);pswp.close();}else{history.go(-1)}});
+	if(!history.state||!history.state.pswp||history.state.path!==location.href){
+		history.pushState({pswp:true,path:location.href},null,location.href);
+	}
+	_on(window,'popstate',(e)=>{
+		if(typeof pswp==="object"&&pswp&&pswp.isOpen){
+			history.pushState({
+				pswp:true,
+				path:location.href
+			},null,location.href);
+			pswp.close();
+		}else{
+			history.go(-1);
+		}
+	});
 }
 
 
@@ -607,8 +615,7 @@ function popup(html='', head, options={}){
 	pop.appendChild(popl);
 	const pop_el = _ce('div',{id: 'popbox'});
 
-	const hd = _ce('header');
-	hd.innerHTML = head;
+	const hd = _ce('header',0,{innerHTML: head});
 	pop_el.appendChild(hd);
 
 	pop.appendChild(pop_el);
@@ -667,8 +674,8 @@ const ddGen = (el, op, s='', id='', t='Please Select')=>{
 		}
 		sel_el.appendChild(dh);
 		for(const i in op){
-			const op_el = _ce('option',{value: v});
 			const v = op[i][0]+'';
+			const op_el = _ce('option',{value: v});
 			if(selv === v){_att(op_el,'selected','');}
 			const q =op[i].length>1? op[i][1] : op[i][0];
 			if(q.includes('<')){
@@ -751,30 +758,27 @@ async function act_upload(hide,appup){
 		if(mtype || (_p.ext_uploads.includes(ext) || _p.ext_uploads.includes('*'))){
 			const t = ['M8 6H1V1H8M2 5H7V2H2Z','M8 6H1V1h7M2 5h5L5 2 4 4 3.2 3Z','M6 1H1v5h5V4l2 2V1L6 3Z'];
 			let src = (mtype === 1 && up.maxthm>0) ? URL.createObjectURL(file) : "data:image/svg+xml,%3Csvg fill='%23666' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 7'%3E%3Cpath d='"+t[mtype]+"'%3E%3C/path%3E%3C/svg%3E";
-			const f = _ce('div',{'class': 'uploadthumb'});
 			const im = _ce('img',{src: src});
-			f.appendChild(im);
 			const pg = _ce('nav');
-			f.appendChild(pg);
-			const lb = _ce('label');
-			lb.textContent = '0%';
-			f.appendChild(lb);
-			f.appendChild(document.createTextNode(' of ' + filesize(file.size)));
-			const dv = _ce('div');
-			dv.textContent = file.name;
-			f.appendChild(dv);
+			const dv = _ce('div',0,{textContent: file.name});
+			const b = _ce('button',{'class':'uploadclose',title: "Close"},0,_ce('i',{'class':'ico-x'}));
+			const f = _ce('div',{'class': 'uploadthumb'},0,[
+				im,
+				pg,
+				_ce('label',0,{textContent: '0%'}),
+				_tn(' of ' + filesize(file.size)),
+				dv,
+				b
+			]);
 
-			const b = _ce('button',{'class':'uploadclose',title: "Close"});
 			b.onclick = () => {
 				up.List = up.List.filter(w => w.f.name !== file.name);
 				f.remove();
 				up.maxthm++;
 			};
-			b.appendChild(_ce('i',{'class':'ico-x'}));
-			f.appendChild(b);
 
 			_id('uploadlist').appendChild(f);
-			up.List.push({f:file,el:pg,cl:b,im:im});
+			up.List.push({f: file, el: pg, cl: b, im: im});
 			up.maxthm--;
 		}
 	};
@@ -851,32 +855,10 @@ async function act_upload(hide,appup){
 	};
 
 
-	const h = _ce('div',{id: 'uploadbox'});
-	h.ondrop = (e) => {
-		e.preventDefault();
-		h.classList.remove('drag');
-		const files = e.dataTransfer.items;
-		addItem(files);
-	};
-	h.ondragover = (e) => {
-		e.preventDefault();
-		e.dataTransfer.dropEffect = 'copy';
-		h.classList.add('drag');
-	};
-	h.innerHTML = '<div id="uploadhead">\
-	<span id="uploadtitle">File Uploader </span>\
-	<span onclick="act_upload(1)" id="uploadclose">&times;</span>\
-	</div>\
-	<p>Drag and drop folder/files here</p>\
-	';
-	const p1 = _ce('p');
 	const f = _ce('input',{multiple: '', type: 'file', id: 'uploadinput', style: 'display:none'});
 	//_att(f, 'accept', 'image/*, video/*');
 	//_att(f, 'webkitdirectory', '');
 	_on(f,'change', (e) => {addItem(e.target.files,1);});
-	p1.appendChild(f);
-
-	p1.appendChild(_ce('label',{'class':'btn', 'for': 'uploadinput'},{textContent: 'Select Files'}));
 
 	const bt = _ce('span',{'class':'btn default'},{textContent: 'Upload Now'});
 	bt.onclick = () => {
@@ -889,29 +871,44 @@ async function act_upload(hide,appup){
 
 		upNext([],1);
 	};
-	p1.appendChild(bt);
 
-	h.appendChild(p1);
 
-	const p2 = _ce('p');
 
 	const dl = _ce('label');
 	const dr = ddGen(dl, dirArr(), up.dir);
 	dr.onchange = () => {up.dir = parseInt(dr.value, 10);}
-	p2.appendChild(dl);
-
-	p2.appendChild(_ce('br'));
 
 	const sl = _ce('label');
 	const sd = ddGen(sl, [[0,'Skip Duplicates'],[1,'Auto Rename'],[2,'Overwrite']], up.Mode);
 	sd.onchange = () => {up.Mode = parseInt(sd.value, 10);};
 
-	p2.appendChild(sl);
+	const h = _ce('div',{id: 'uploadbox'},0,[
+			_ce('div',{id:'uploadhead'},0,[
+				_ce('span',{id: 'uploadtitle'},{textContent: 'File Uploader '}),
+				_ce('span',{id: 'uploadclose','onclick':'act_upload(1)'},{textContent: '×'})
+			]),
+			_ce('p',0,{textContent: 'Drag and drop folder/files here'}),
+			_ce('p',0,0,[
+				_ce('p',0,0,[f,_ce('label',{'class':'btn', 'for': 'uploadinput'},{textContent: 'Select Files'}), bt]),
+				dl,
+				_ce('br'),
+				sl,
+				_ce('div',{id: 'uploadlist'})
+			])
+		]);
+	h.ondrop = (e) => {
+		e.preventDefault();
+		h.classList.remove('drag');
+		const files = e.dataTransfer.items;
+		addItem(files);
+	};
+	h.ondragover = (e) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'copy';
+		h.classList.add('drag');
+	};
 
 
-	h.appendChild(p2);
-
-	h.appendChild(_ce('div',{id: 'uploadlist'}));
 
 	u.appendChild(h);
 	if(appup){
@@ -1017,7 +1014,7 @@ function act_edit(atag){
 			imgRot();
 		});
 		_on(video, 'timeupdate', _=> {vcut.pos = video.currentTime;});
-		imgdiv.appendChild(_ce('div',{'class': 'ctxt vtrim'},0,{appendChild:_ce('div')}));
+		imgdiv.appendChild(_ce('div',{'class': 'ctxt vtrim'},0,_ce('div')));
 	}
 
 
@@ -1404,10 +1401,7 @@ function act_edit(atag){
 
 
 	for(const [k, v] of Object.entries(icons)){
-		const d = _ce('div',{'class':'rbtn'});
-		const i = _ce('i',{'class':'ico-'+v});
-		i.onclick = imgRot.bind(this,k);
-		d.appendChild(i);
+		const d = _ce('div',{'class':'rbtn'},0,_ce('i',{'class':'ico-'+v},{onclick: imgRot.bind(this,k)}));
 		nav.appendChild(d);
 	}
 
@@ -1467,24 +1461,19 @@ function act_edit(atag){
 		image.src = src;
 	}else{
 		//video
-		const i = _ce('i',{'class': 'ico-start'});
-		i.onclick = imgRot.bind(this,'start');
-		nav.appendChild(_ce('div',{'class': 'cbtn'},0,{appendChild: i}));
+		nav.appendChild(_ce('div',{'class': 'cbtn'},0,_ce('i',{'class': 'ico-start'},{onclick: imgRot.bind(this,'start')})));
 
 		vcut.el.start = _ce('div',{'class': 'ctxt'},{textContent: numTime(0)});
 		nav.appendChild(vcut.el.start);
 
 		vcut.el.dur = _ce('i');
-		vcut.el.audio = _ce('i',{'class': 'cbtn ico-sound'})
-		vcut.el.audio.onclick = imgRot.bind(this,'sound');
-		nav.appendChild(_ce('div',{'class': 'ctxt', style: 'flex:1;text-align:center'},0,{appendChild: [vcut.el.audio, vcut.el.dur]}));
+		vcut.el.audio = _ce('i',{'class': 'cbtn ico-sound'},{onclick: imgRot.bind(this,'sound')});
+		nav.appendChild(_ce('div',{'class': 'ctxt', style: 'flex:1;text-align:center'},0,[vcut.el.audio, vcut.el.dur]));
 
 		vcut.el.stop = _ce('div',{'class': 'ctxt'},{textContent: '-'});
 		nav.appendChild(vcut.el.stop);
 
-		const j = _ce('i',{'class': 'ico-stop'});
-		j.onclick = imgRot.bind(this,'stop');
-		nav.appendChild(_ce('div',{'class': 'cbtn'},0,{appendChild: j}));
+		nav.appendChild(_ce('div',{'class': 'cbtn'},0,_ce('i',{'class': 'ico-stop'},{onclick: imgRot.bind(this,'stop')})));
 		imgRot();
 	}
 	tclose.onclick = close;
@@ -1604,27 +1593,44 @@ async function buildMenu(){
 			b.onclick = plus.bind(this,b);
 			li.appendChild(b);
 			li.classList.add('sub');
-
-			const subUl = _ce('ul',{style: 'display:none'});
+			let s = [];
 			folder.cubs.forEach((subFolder) => {
-				const subLi = genLI(subFolder,'subul');
-				subUl.appendChild(subLi);
+				s.push(genLI(subFolder,'subul'));
 			});
-
-			li.appendChild(subUl);
+			li.appendChild(_ce('ul',{style: 'display:none'},0,s));
 		}else{
-			const i = _ce('i');
-			i.onclick = itag.bind(this,a);
-			li.appendChild(i);
+			li.appendChild(_ce('i',0,{onclick: itag.bind(this,a)}));
 		}
 
 		return li;
 	};
 
 	const menu = _id('menu');
-	menu.innerHTML = '<ul id="premenu"><li><a href="?a=Albums"><u class="ico-album"></u>Albums</a></li><li><a href="?t=Timeline"><u class="ico-date"></u>Timeline</a></li><li><a href="?k=Tags"><u class="ico-tag"></u>Tags</a></li></ul>';
+	menu.innerHTML = '';
 
-	menu.appendChild(_ce('ul',0,0,{appendChild: genLI(Object.keys(Dir.d).map(menuArr)[0])}));
+	menu.appendChild(_ce('ul',{id:'premenu'},0,[
+		_ce('li',0,0,
+			_ce('a',{href: '?a=Albums'},0,[
+				_ce('u',{'class':'ico-album'}),
+				_tn('Albums')
+			])
+		),
+		_ce('li',0,0,
+			_ce('a',{href: '?t=Timeline'},0,[
+				_ce('u',{'class':'ico-date'}),
+				_tn('Timeline')
+			])
+		),
+		_ce('li',0,0,
+			_ce('a',{href: '?k=Tags'},0,[
+				_ce('u',{'class':'ico-tag'}),
+				_tn('Tags')
+			])
+		)
+	]));
+	
+
+	menu.appendChild(_ce('ul',0,0,genLI(Object.keys(Dir.d).map(menuArr)[0])));
 }
 
 
@@ -2163,13 +2169,8 @@ async function cMenu(e,dhis,who,rpt){
 				li.onclick = (e)=>{cSelect(who,i,e,li);};
 				cm.appendChild(li);
 			}
-			const ip = _ce('input');
-			_att(ip,'type','range');
-			_att(ip,'min',viewitms[v][0]);
-			_att(ip,'max',viewitms[v][1]);
-			_att(ip,'list','szdd');
+			const ip = _ce('input',{'type': 'range', min: viewitms[v][0], max: viewitms[v][1], list: 'szdd', value: (navi.view[v] || viewitms[v][2])});
 
-			ip.value = navi.view[v] || viewitms[v][2];
 
 
 			ip.onchange = () => {
@@ -2177,16 +2178,9 @@ async function cMenu(e,dhis,who,rpt){
 				navi.view[v] = ip.value;
 				db.conf.put('view',navi.view).catch(e=>{});
 			}
-			const li = _ce('li');
-			li.appendChild(ip);
-			li.onclick = (e)=>{e.stopPropagation();};
-			const dl = _ce('datalist');
-			dl.id = 'szdd';
-			const op = _ce('option');
-			op.value = viewitms[v][2];
-			dl.appendChild(op);
-			li.appendChild(dl);
-			cm.appendChild(li);
+			cm.appendChild(_ce('li',0,{onclick: (e)=>{e.stopPropagation();}},[
+				ip, _ce('datalist',{id: 'szdd'},0,_ce('option',{value: viewitms[v][2]}))
+			]));
 			break;
 		}
 		case 'exit':{
@@ -2512,19 +2506,22 @@ const act_share = async (id) => {
 			},{
 				text: "Yes",
 				click: async (html, pp) => {
+					let t = 'Share failed';
+					let m = 'Not supported: navigator.canShare()';
 					if(navigator.canShare(data)){
+						m = 0;
 						try{
 							await navigator.share(data);
 						}catch(e){
 							console.error(e);
-							e = JSON.stringify(e);
-							if(e.length>3){
-								wait(500,()=>{popup(e,'Share failed');});
+							t = t + ': ' + e.name;
+							m = e.message;
+							if (t == 'NotAllowedError') {
+								m = 'Share too large<br>' + m;
 							}
 						}
-					}else{
-						wait(500,()=>{popup('Not supported: navigator.canShare()','Share failed');});
 					}
+					if(m){wait(500,()=>{popup(m,t);});}
 					return true;
 				},
 				key: "Enter",
@@ -2686,22 +2683,15 @@ function act_info(el,dir){
 		n.Place = v.textContent;
 	}
 
-	const t = _ce('table',{'class':'inf'});
+	let t = [];
 	for(const i in n){
-		const r = _ce('tr');
-
-		const a = _ce('td');
-		a.textContent = i+':';
-		r.appendChild(a);
-
-		const b = _ce('td');
-		b.textContent = n[i];
-		r.appendChild(b);
-
-		t.appendChild(r);
+		t.push(_ce('tr',0,0,[
+			_ce('td',0,{textContent: i+':'}),
+			_ce('td',0,{textContent: n[i]})
+		]));
 	}
 
-	popup(t,'Info',{
+	popup(_ce('table',{'class':'inf'},0,t),'Info',{
 		buttons: [
 			{
 				text: "Close",
@@ -2818,11 +2808,9 @@ function imageAlb(act,id,alb){
 
 
 function itick(n,t,c,ty='checkbox'){
-	const l = _ce('label',{'class':'togg'});
 	const i = _ce('input',{'type':ty,'name':n});
 	if(c){_att(i,'checked','');}
-	l.appendChild(i);
-	l.appendChild(document.createTextNode(' ' + t));
+	const l = _ce('label',{'class':'togg'},0,[i,_tn(' ' + t)]);
 	return {l,i};
 }
 
@@ -3072,9 +3060,7 @@ function fsTask(task, fid, newitm, el, tst, tot, lmsg, err){
 	tst.bar(cur, tot);
 
 	if(task === 'download'){
-		const ah = document.createElement("a");
-		ah.href = el.href;
-		ah.download = name;
+		const ah = _ce("a",{href: el.href, download: name});
 		document.body.appendChild(ah);
 		wait(1,()=>{ah.click();});
 		wait(200,()=>{
@@ -3201,10 +3187,7 @@ function expandMenu(){
 	if(navi.mode=='s'){
 		id = 0;
 		const m = getUrlID();
-		const s = _ce('a',{href: m.url});
-		s.onclick = ()=>{searchList(m);return false;};
-		s.innerHTML = 'Search: <i>'+navi.kwd+'</i>';
-		cr.appendChild(s);
+		cr.appendChild(_ce('a',{href: m.url},{innerHTML: 'Search: <i>'+navi.kwd+'</i>', onclick: ()=>{searchList(m);return false;}}));
 	}
 	const bc = (id,home) => {
 		let n = getFilename(Dir.d[id][0]);
@@ -3604,11 +3587,7 @@ async function media(j, n, f, m ){
 				}
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
-				const fo = _ce('div',{'class':'info'});
-				const fnm = _ce('f-nm');
-				fnm.textContent = name + ' ('+qt+')' + (own? '':' ⇋') ;
-				fo.appendChild(fnm);
-				ah.appendChild(fo);
+				ah.appendChild(_ce('div',{'class':'info'},0,_ce('f-nm',0,{textContent: name + ' ('+qt+')' + (own? '':' ⇋')})));
 				rightMenu(ah,'alb');
 				g.appendChild(ah);
 				tQt+=qt;
@@ -3626,12 +3605,8 @@ async function media(j, n, f, m ){
 				im.src = window.location.pathname + '?tthmb='+t+'&mt='+Dir.m;
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
-				const fo = _ce('div',{'class':'info'});
-				const fnm = _ce('f-nm');
 				let w = t.split('-');
-				fnm.textContent = w[0] + ' '+ getMonth(w[1]) +' ('+j.i[t]+')';
-				fo.appendChild(fnm);
-				ah.appendChild(fo);
+				ah.appendChild(_ce('div',{'class':'info'},0,_ce('f-nm',0,{textContent: w[0] + ' '+ getMonth(w[1]) +' ('+j.i[t]+')'})));
 				ah.className = 'stack';
 				g.appendChild(ah);
 				tQt+=j.i[t];
@@ -3656,9 +3631,7 @@ async function media(j, n, f, m ){
 				im.src = window.location.pathname + '?kthmb='+encodeURIComponent(k)+'&mt='+Dir.m;
 				ah.appendChild(im);
 				ah.appendChild(_ce('i-con'));
-				const fo = _ce('div',{'class': 'info'});
-				fo.appendChild(_ce('f-nm',0, {textContent: k + ' ('+j.i[1][k]+')'}));
-				ah.appendChild(fo);
+				ah.appendChild(_ce('div',{'class': 'info'},0,_ce('f-nm',0, {textContent: k + ' ('+j.i[1][k]+')'})));
 				ah.className = 'stack';
 				g.appendChild(ah);
 				tQt++;
@@ -3667,7 +3640,7 @@ async function media(j, n, f, m ){
 			for(const k in j.i[0]){
 				const u = getUrlID({k: k});
 				const ah = _ce('a',{'class': "loaded", href: u.url}, {textContent: k + ' ('+j.i[0][k]+')'});
-				ah.onclick = genPage.bind(this,u, ah);
+				ah.onclick = genPage.bind(this, u, ah);
 				g.appendChild(ah);
 				tQt++;
 			}
@@ -3709,7 +3682,6 @@ async function media(j, n, f, m ){
 
 			const ah = _ce('a',{'class': 'dir', 'data-d': id, href: getUrlID(id).url});
 			ah.onclick = genPage.bind(this,id, ah);
-			const fldr = _ce('div',{'class': 'fldr'});
 			const fldd = _ce('div');
 			if(qt){
 				const im = _ce('img', {loading: 'lazy'});
@@ -3718,19 +3690,14 @@ async function media(j, n, f, m ){
 				im.src = window.location.pathname + '?fthmb='+id+'&mt='+mt;
 				fldd.appendChild(im);
 			}
-			fldr.appendChild(fldd);
-			ah.appendChild(fldr);
-			const fo = _ce('div',{'class': 'info'});
+			ah.appendChild(_ce('div',{'class': 'fldr'},0,fldd));
 
-			fo.appendChild(_ce('f-nm',0,{textContent: getFilename(dirpath)}));
-
-			fo.appendChild(_ce('f-mt',0,{textContent: relativeDate(mt)}));
-
-			fo.appendChild(_ce('f-sz',0,{textContent: filesize(sz)}));
-
-			fo.appendChild(_ce('f-qt',0,{textContent: qt}));
-
-			ah.appendChild(fo);
+			ah.appendChild(_ce('div',{'class': 'info'},0,[
+				_ce('f-nm',0,{textContent: getFilename(dirpath)}),
+				_ce('f-mt',0,{textContent: relativeDate(mt)}),
+				_ce('f-sz',0,{textContent: filesize(sz)}),
+				_ce('f-qt',0,{textContent: qt})
+			]));
 			rightMenu(ah,'dir');
 			g.appendChild(ah);
 		}
@@ -3771,22 +3738,16 @@ async function media(j, n, f, m ){
 		if(!v.d){v.d = navi.dir;}
 		if(navi.mode!=='d'){tQt++; tSz += v.s;}
 		ii++;
-		const ah = _ce('a', {id: 'imt'+ii});
 
 		let p = Dir.d[v.d][0];
 		if(p !== ''){p+='/';}
 		p =(p + v.n).split('/').map(y => encodeURIComponent(y)).join('/');
-		let url = _p.url_pictures + '/' + p + '?mt='+v.m;
+
 
 		const ext = getExt(v.n).toLowerCase();
 
-		_att(ah,'data-s', v.s);
-		_att(ah,'data-i', v.i);
-		_att(ah,'data-d', v.d);
-		_att(ah,'data-tick', '0');
-		_att(ah,'data-ori', v.ori ? v.ori : 0 );
+		const ah = _ce('a', {'class': 'file', href: _p.url_pictures + '/' + p + '?mt='+v.m, id: 'imt'+ii, 'data-s': v.s, 'data-i': v.i, 'data-d': v.d, 'data-tick': '0','data-ori': (v.ori ? v.ori : 0), style: '--ratio:'+((v.h) ? v.w + '/' + v.h : '4/3')});
 
-		ah.style.setProperty('--ratio', (v.h) ? v.w + '/' + v.h : '4/3');
 		v.ft = _p.ext_images.includes(ext)? 1 : (_p.ext_videos.includes(ext)? 2 : 0);
 
 		if(v.ft){
@@ -3808,38 +3769,23 @@ async function media(j, n, f, m ){
 			ah.classList.add('loaded');
 		}
 
-		_att(ah,'href', url);
 
 
-		const tk = _ce('i',{'class': 'ticker'});
-		tk.onclick = tickShow;
-		ah.appendChild(tk);
+		ah.appendChild(_ce('i',{'class': 'ticker'},{onclick: tickShow}));
 		if(v.w){ah.appendChild(_ce('i-con'));}
 
-		const fo = _ce('div',{'class': 'info'});
+		const fo = _ce('div',{'class': 'info'},0,[
+			_ce('f-nm',0,{textContent: v.n}),
+			_ce('f-mt',0,{textContent: relativeDate(v.t)}),
+			_ce('f-sz',0,{textContent: filesize(v.s)}),
+			(v.w? _ce('f-rs',0,{textContent: v.w+'x'+v.h}) : 0),
+			(v.dev? _ce('f-dev',0,0,[_ce('i',{'class':'ico-camera'}),_tn(' '+v.dev)]) : 0),
+			(v.k? _ce('f-kw',0,0,[_ce('i',{'class':'ico-camera'}),_tn(' '+v.k)]) : 0)
+		]);
 
-		fo.appendChild(_ce('f-nm',0,{textContent: v.n}));
-
-		fo.appendChild(_ce('f-mt',0,{textContent: relativeDate(v.t)}));
-
-		fo.appendChild(_ce('f-sz',0,{textContent: filesize(v.s)}));
-
-
-		if(v.w){
-			fo.appendChild(_ce('f-rs',0,{textContent: v.w+'x'+v.h}));
-		}
-
-
-		if(v.dev){
-			fo.appendChild(_ce('f-dev',0,{innerHTML: '<i class="ico-camera"></i> '+v.dev}));
-		}
-
-		if(v.k){
-			fo.appendChild(_ce('f-kw',0,{innerHTML: '<i class="ico-camera"></i> '+v.k}));
-		}
 
 		if(v.city){
-			const gp = _ce('f-gps',{'data-loc': (v.lat/10000)+','+(v.lon/10000)},{innerHTML: '<i class="ico-map"></i> '+v.city});
+			const gp = _ce('f-gps',{'data-loc': (v.lat/10000)+','+(v.lon/10000)},0,[_ce('i',{'class':'ico-map'}),_tn(' '+v.city)]);
 			gp.onclick = (e) => {
 				e.stopPropagation();
 				e.preventDefault();
@@ -3856,7 +3802,6 @@ async function media(j, n, f, m ){
 		}
 
 		ah.appendChild(fo);
-		ah.classList.add('file');
 		rightMenu(ah,'img');
 		g.appendChild(ah);
 
@@ -3986,9 +3931,8 @@ async function picT() {
 
 	lightbox.on('change', () => {
 		const ah = lightbox.pswp.currSlide.data.element;
-		const id = _att(ah,'data-i');
-		const n = _qs('f-nm',ah).textContent;
-		let m = getUrlID(); m.url +='#view/'+id+'/'+encodeURIComponent(n);
+		let m = getUrlID();
+		m.url +='#view/'+_att(ah,'data-i')+'/'+encodeURIComponent(_qs('f-nm',ah).textContent);
 		updHist(0,m);
 	});
 
@@ -4037,8 +3981,7 @@ async function picT() {
 					}
 					const exn = _qs('f-nm',el);
 					if(exn){exn.remove();}
-					const fnm = _qs('f-nm',x).cloneNode(true);
-					el.appendChild(fnm);
+					el.appendChild(_qs('f-nm',x).cloneNode(true));
 					el.classList.add('loaded');
 					_qs('i',el).onclick = tickShow;
 				});
