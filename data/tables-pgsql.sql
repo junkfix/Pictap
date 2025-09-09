@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS /*#*/albums (
 	name text NOT NULL,
 	qt integer DEFAULT 0 NOT NULL,
 	mtime integer DEFAULT 0 NOT NULL,
-	share text,
+	share text DEFAULT NULL,
 	family smallint DEFAULT 0 NOT NULL,
 	thm integer REFERENCES /*#*/files(fileid) ON DELETE SET NULL,
 	PRIMARY KEY (albumid),
