@@ -1,4 +1,53 @@
-# Pictap: Web Picture Gallery for PHP
+# Pictap: Web Picture Gallery Foreword
+
+Pictap currently is the only photo gallery that meets my expectations after leaving Synology DSM 6 PhotoStation (showing "albums" structured in existing folders, users with access rights, create public links to albums, and many more).
+After playing arround for some time I noticed some wishes for improvements - which I tried to bring in.\
+Now where there is some success I would like to share the new features and modifications.\
+\
+But at the very first I have to thank [junkfix](https://github.com/junkfix/Pictap) for his great work. Without it we wouldn't have so much fun with our photo album anymore and also my small modifications wouldn't have been possible.\
+\
+*Currently this is the original Pictap.\
+Please be patient when this forking process is taking some time since for me Pictap is the first project to fork and publish.*
+
+Modifications to Pictap 2.0.8 I'ld like to share:
+- FIXED 1		support special characters 'äöü' in filenames\
+  On Linux (Diskstation DSM 7) files and folders containing special characters wouldn't be shown.\
+  On Windows 10 (with xampp) this hasn't been an issue. The change didn't effect Windows compatibility.
+- FEATURE 2	title configurable\
+  I just found it nice to have a configurable web page title.
+- FEATURE 3	favicon configurable\
+  Same with the favicon.\
+  Here I am not very sure about the icon I had to switch off. Maybe I'll find a solution.
+- FEATURE 4	user configurable without user_folder\
+  Our existing folder gallery just is a family gallery. Now you can switch of creation of user folders and each user will login to main folder. He obviously should have the right to see all.
+- FEATURE 5	show logged in user name\
+  When testing back and forth I found it nice to see the test users on the different windows I logged in.\
+  The name shows in the left menu.
+- FEATURE 6	loop gallery configurable on/off\
+  Showing photos sometimes is confusing when it rotates from last to first image - "did we have this one already ?"
+- MODIFIED 7	name all roles explicitly instead of binary 0xfff + delete some\
+  Just a small change about defining user default roles.
+- MODIFIED 8	images sort by DTOriginal: instead of sort by DTModified\
+  I found that images date sort happened by modified date. When I create albums I often modify images. So the timeline wouldn't match.\
+  Currently this is a fixed (non configurable) change.
+- MODIFIED 9	tree default sort\
+  As above we usually sort our albums just by time. So, would be nice to set this as default instead of name sort.
+- MODIFIED 10	folders always sort by name\
+  Instead of above... For folders it seems better to always sort them by name. Because they don't have a original/taken timestamp.
+- MODIFIED 11	show DTOriginal on gallery\
+  For us this seemed more reasonable than the modified tiemstamp.
+- FEATURE 12	split folder names\
+  Found a funny behaviour: folder thumbnail sizes sometimes were different in height in gallery tiles view.\
+  After some search I did notice our very long folder names.\
+  Now you can configure a regex to split, shorten, ... the names.
+- FEATURE 13	sort default configurable\
+  This change made the default sort configurable.
+- OPEN 14 there seems to be a tiny issue with boolean settings which default to 1: a change to 0 seems to be not saved.\
+  This I noticed when adding a new setting.\
+  After turning the default of this new setting to 0 it could be saved.
+
+
+# Pictap: Web Picture Gallery for PHP  (the original by junkfix)
 
 Pictap is a versatile web-based picture gallery, offering a plenty of features for managing and sharing your media collection.
 Unlike other online solutions, Pictap is tailored specifically for home users seeking to securely store their mobile images on a local network drive, such as a Raspberry Pi. Think of it as a replacement for Google Photos, allowing you to curate your collection, share selected holiday photos with friends and family, and seamlessly backup and access your images from anywhere in the world.
