@@ -1,7 +1,36 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['2.0.8',2]; //[main, config]]
+const PIC_VER = ['2.0.8.1',2]; //[main, config]]
+
+### Changelog ###
+### 2.0.8.1
+# FIXED 1		support special characters 'äöü' in filenames with setlocale()
+# FEATURE 2	title configurable
+# FEATURE 3	favicon configurable
+# FEATURE 4	user configurable without user_folder
+# FEATURE 5	show logged in user name
+# FEATURE 6	loop gallery configurable on/off (pictap.js: PhotoSwipeLightbox(loop:bollean);)
+# MODIFIED 7	name all roles explicitly instead of binary 0xfff + delete some
+# MODIFIED 8	images sort by DTOriginal: instead of sort by DTModified
+# MODIFIED 9	tree default sort: default names to up
+# MODIFIED 10	folders always sort by name
+# MODIFIED 11	show DTOriginal on gallery
+# FEATURE 12	folder thumbnail sizes are different in height in gallery tiles view, due to very long names -> split folder names
+# FEATURE 13	sort default configurable
+# BUG 14	boolean setting with default == 1 cannot be saved ???
+
+# TODO	sort: user selection stayes there (currently jumps back to standard on folder change)
+# TODO	sort: save user selection
+# TODO	add folder description (short for tree, long for folder image)
+# TODO	loop gallery: make selectable
+# TODO	loop gallery: save user selection
+# TODO	backup gallery database
+# TODO	support .ico files  - not directly possible with PHP
+
+
+# FIXED 1		support special characters 'äöü'... in filenames
+setlocale(LC_CTYPE, "en_US.UTF-8");
 
 define('PTM', $ptset ?? 1);
 if(get('sf')){sfile(get('sf'));}
@@ -1055,6 +1084,7 @@ function menuList(){
 	$user = (USER->id === 1)? '' : USER->user;
 	if(!($dbo = openDb()) ||
 	($stmt = $dbo->run("SELECT dirid, dir, mt, sz, qt, parentid FROM ".PICTAP->db_prefix."dirs d WHERE 1 = 1 $fs ORDER BY dir ASC;", $fp, 2, __LINE__)) === false) {return null;}
+	#logger("Menulist ". $user);
 
 	$stmt = $stmt ?: [];
 	foreach ($stmt as $r) {
@@ -1062,10 +1092,21 @@ function menuList(){
 		$p = intval($r['parentid']);
 		$l = [ $r['dir'], $p, (int)$r['mt'], (int)$r['sz'], (int)$r['qt'] ];
 		$menu[$r['dirid']] = $l;
-		if($r['dir'] === $user){
-			$home = (int)$r['dirid'];
-			$root = $p;
+		# FEATURE 4	added user_folder: set user root to user's folder or main root
+		if (userCan('user_folder')) {
+			# standard: user has a user folder
+			if($r['dir'] === $user){
+				$home = (int)$r['dirid'];
+				$root = $p;
+			}
+		} else {
+			# user has no own folder - it is same (root) as admin
+			if($r['dir'] === ''){
+				$home = (int)$r['dirid'];
+				$root = $p;
+			}
 		}
+		#logger("Menulist:".$r['dir'].", User: ".USER->id.", ".USER->user.", '$user', root: $root, home: $home");
 		if($r['dir'] === ''){$root = (int)$r['dirid'];}
 	}
 
@@ -1232,7 +1273,8 @@ function userCan($cando, $role=null) {
 
 function roleList($role=null){
 	$x=[];
-	foreach(explode(',','admin,alldir,login,family,upload,search,edit,rename,move,delete,album,newdir') as $k=>$v){
+	# FEATURE 4	added user_folder: select if user has his own folder
+	foreach(explode(',','admin,alldir,login,family,upload,search,edit,rename,move,delete,album,newdir,user_folder') as $k=>$v){
 		$c = 1 << $k;
 		if($role !== null){
 			$c = ((($role & $c) === $c)? 1 : 0);
@@ -1723,7 +1765,12 @@ function userform($id,$user){
 
 	foreach(ROLES as $r=>$n){
 		if(in_array($r,['family','alldir'])){continue;}
-		$out .= itick($r.$id, userCan($r,$user[3]), ($id == '1' && in_array($r,['admin','login'])), ucfirst($r));
+		# FEATURE 4	added user_folder: disable selection for admin ($id == 1)
+		if ( ! ($id == '1' && in_array($r,['user_folder']))) {
+			$chk = userCan($r,$user[3]);
+			$ena = ($id == '1' && in_array($r,['admin','login','user_folder']));
+			$out .= itick($r.$id, $chk, $ena, ucfirst($r));
+		}
 	}
 
 	$out .= '</div></details>';
@@ -1834,9 +1881,13 @@ function pageAccounts(){
 				}
 			}else if($user[0] !==''){//create
 				$setup->users[$id] = $user;
-				$newp = PICTAP->path_pictures .'/'.$user[0];
-				makeDir($newp);
-				scanFolder($newp);
+				# FEATURE 4	added user_folder: don't create the user folder if not desired
+				$uh = PICTAP->path_pictures;
+				if (userCan('user_folder')) {
+					$uh .= '/'.$user[0];
+					makeDir($uh);
+				}
+				scanFolder($uh);
 				if(!userUpdate($setup, $id, $setup->users[$id], 1)){$msg.='<h3>Error userCreate</h3>';}
 				$d = 'User Created '.$id.': '.$setup->users[$id][0].' by: '.USER->user;
 				logger($d);
@@ -1864,7 +1915,9 @@ function pageAccounts(){
 	}
 
 	$id = $maxid + 1;
-	$out .= userform($id, ['','','',(0xfff ^ ROLES->admin ^ ROLES->alldir ^ ROLES->family)]);
+	# MODIFIED 7	name all roles explicitly instead of binary 0xfff + delete some
+	#$out .= userform($id, ['','','',(0xfff ^ ROLES->admin ^ ROLES->alldir ^ ROLES->family)]);
+	$out .= userform($id, ['','','',(ROLES->login + ROLES->upload + ROLES->search + ROLES->edit + ROLES->rename + ROLES->move + ROLES->delete + ROLES->album + ROLES->newdir + ROLES->user_folder)]);
 	$idlist[]=$id;
 
 	$out .= '<input type="hidden" name="idlist" value="'.implode(',',$idlist).'">';
@@ -1923,6 +1976,10 @@ function pageConfig($oldsetup){
 		'db_schema' 	=> ['text', '', 0, 'Database schema for pgsql, empty to keep default'],
 		'db_prefix' 	=> ['text', '', 0, 'Tables prefix, eg. pic_ or leave empty','pattern="^[a-z0-9_]*$"'],
 		'db_file' 		=> ['text', $db .'/pictap.db', 1, 'Sqlite database file eg. '.$db .'/pictap.db'],
+		# FEATURE 2	title configurable
+		'title'         => ['text', 'Pictap Gallery', 0, 'Gallery title eg. My Own Gallery'],
+		# FEATURE 3	favicon configurable
+		'favicon'       => ['text', 'favicon.ico', 0, 'Pictap Favicon Icon'],
 		'path_pictures' => ['text', $pp, 1, 'Main folder path eg. '.$pp],
 		'url_pictures' 	=> ['text', reltiveroot($rp.'pictures'), 1, 'Full or relative url of main pictures folder'],
 		'path_thumbs' 	=> ['text', $tp, 1, 'Thumb folder path eg. '.$tp],
@@ -1947,9 +2004,17 @@ function pageConfig($oldsetup){
 		'exclude_dirs' 	=> ['text', '', 0,'Regex for preg_match eg. <code>/\/bank|\/house(\/|$)/i</code> to exclude bank* or /house/* dirs'],
 		'exclude_files' => ['text', '', 0,'Regex for preg_match eg. <code>/\.(gif|png)$/i</code> to exclude .gif/.png files'],
 		'folder_thumb' 	=> ['text', '', 0,'Default Folder Thumbnail (optional) eg. folder.jpg'],
+		# FEATURE 12	folder thumbnail sizes are different in height in gallery tiles view, due to very long names -> split folder names
+		'name_regex' 	=> ['text', '', 0,'Regex for folder names, eg. splitting long names: /[_-]/$1 $2/g'],
 		'timezone'		=> ['select', date_default_timezone_get(), 1, 'Local Timezone',$tz],
 		'cookie'		=> ['text', 'pictap', 1, 'Login Cookie (in case of multi install)','pattern="^[A-Za-z0-9]*$"'],
 		'search_max_results' 	=> ['number', 1000, 1, ''],
+		# FEATURE 6	loop gallery configurable on/off
+		'slides_loop'		=> ['tick', 0, 1, 'Loop the gallery: In large image mode after the last one show the first one.'],
+		# MODIFIED 10	folders always sort by name
+		'sort_fld_name'	=> ['tick', 0, 1, 'Sort folders always by name.'],
+		# FEATURE 13	sort: default configurable
+		'sort_default'	=> ['select', 'date', 1, 'Default sort selection.', ['name'=>'Name','size'=>'Filesize','date'=>'Date','dur'=>'Duration','type'=>'Filetype','dim'=>'Dimension']],
 		'auto_hide_slideshow_ui'=> ['number', 0, 1,'0 = disable, 4 = after 4 sec ...'],
 		'max_mp' 		=> ['number', 6000 * 5000, 1,'Width x Height, Larger images may not get thumbnails'],
 		'auto_rename' 	=> ['tick', 0, 1, 'Auto Rename IMG_/VID_date_time.* to date_time.*'],
@@ -3088,8 +3153,9 @@ function htmldoc($config='',$lightbox='',$js=''){
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/svg+xml" href="'.$u.'svg" />
-<link rel="apple-touch-icon" sizes="180x180" href="'.$u.'png">
+<!--link rel="icon" type="image/svg+xml" href="'.$u.'svg">
+<link rel="apple-touch-icon" sizes="180x180" href="'.$u.'png"-->
+<link rel="icon" type="image/x-icon" href="'.PICTAP->favicon.'">
 <link rel="stylesheet" href="pictap.css?'.filemtime(dirnm(__FILE__).'/pictap.css').'">
 <script src="pictap.js?'.filemtime(dirnm(__FILE__).'/pictap.js').'"></script>
 ';
@@ -3108,7 +3174,7 @@ function htmldoc($config='',$lightbox='',$js=''){
 	}
 
 	echo '<title>'.$t.'</title></head><body class="'.$page.'">';
-
+	
 	if(!PTM){
 		echo '<h1>'.$config.'</h1><div class="gallery"></div>';
 		echo '<script>const f = '.$lightbox.';sharedView(f);</script></body></html>';
@@ -3119,7 +3185,10 @@ function htmldoc($config='',$lightbox='',$js=''){
 	<div id="topbar">
 		<div class="rbtn" id="lines" title="Menu" onclick="sidebar(2);"><i class="ico-menu"></i></div>
 
-		<div id="title">Pictap Gallery</div>
+		<div id="title"><?php
+			# FEATURE 2	title configurable
+			echo PICTAP->title; 
+		?></div>
 		<form id="srchf" autocomplete="off"><input title="Search Text" type="search" id="srch"></form>
 		<div class="rbtn" id="noselect" title="Selection" onclick="cMenu(event, this, 'sels')"><i class="ico-ring"></i></div>
 		<div id="selected"></div>
@@ -3138,13 +3207,19 @@ function htmldoc($config='',$lightbox='',$js=''){
 
 <aside id="sidebar">
 	<nav>
+		<div style="position:absolute; left:10px; font-size:x-large"><?php 
+			# FEATURE 5	show logged in user name
+			echo defined('USER') ? USER->user : "Not logged in";
+		?></div>
 		<a id="accounts" title="Accounts" class="rbtn" href="?page=accounts"><i class="ico-user"></i></a>
 		<a id="settings" title="Settings" class="rbtn" href="?page=settings"><i class="ico-set"></i></a>
 		<div class="rbtn" title="Logout" onclick="cMenu(event, this,'exit')"><i class="ico-exit"></i></div>
 		<div id="msortb" title="Menu sort" class="rbtn" onclick="cMenu(event, this,'msort')"><i class="ico-named" id="msorter"></i></div>
 	</nav>
 	<div id="menu"></div>
-	<div class="version"><a href="https://github.com/junkfix/Pictap">Pictap Gallery v<?php echo PIC_VER[0]; ?></a></div>
+	<div class="version">
+		<a href="https://github.com/junkfix/Pictap">Pictap Gallery v<?php echo PIC_VER[0]; ?></a>
+	</div>
 </aside>
 
 <main class="rows">
@@ -3176,7 +3251,15 @@ function htmldoc($config='',$lightbox='',$js=''){
 		'ext_uploads'=>[],
 		'auto_hide_slideshow_ui'=>0,
 		'url_thumbs'=>'',
-		'url_pictures'=>''
+		'url_pictures'=>'',
+		// FEATURE 12	folder thumbnail sizes are different in height in gallery tiles view, due to very long names -> split folder names
+		'name_regex'=>'',
+		# FEATURE 6	loop gallery configurable on/off
+		'slides_loop'=>1,
+		# FEATURE 13	sort: default configurable
+		'sort_default'=>'name',
+		# MODIFIED 10	folders always sort by name
+		'sort_fld_name'=>1
 	];
 	$role = 0;
 
