@@ -1,10 +1,11 @@
 # Pictap: Web Picture Gallery Foreword
 
-Pictap currently is the only photo gallery that meets my expectations after leaving Synology DSM 6 PhotoStation (showing "albums" structured in existing folders, users with access rights, create public links to albums, and many more).
-After playing arround for some time I noticed some wishes for improvements - which I tried to bring in.\
-Now where there is some success I would like to share the new features and modifications.\
+This is a fork of original Pictap from [junkfix](https://github.com/junkfix) which can be found [here](https://github.com/junkfix/Pictap). \
+At the very first I have to thank him for his great work. Without it we wouldn't have so much fun with our existing photo album anymore and also my small modifications wouldn't have been possible.\
 \
-But at the very first I have to thank [junkfix](https://github.com/junkfix/Pictap) for his great work. Without it we wouldn't have so much fun with our photo album anymore and also my small modifications wouldn't have been possible.\
+Pictap currently is the only photo gallery that meets my expectations after leaving Synology DSM 6 PhotoStation (showing "albums" structured in existing folders, users with access rights, create public links to albums, and many more).\
+After playing arround for some time I noticed some wishes for improvements - which I tried to bring in myself.\
+Now where there is some success I'ld like to share some new features and modifications.\
 \
 *Currently this is the original Pictap.\
 Please be patient when this forking process is taking some time since for me Pictap is the first project to fork and publish.*
