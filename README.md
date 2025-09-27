@@ -1,51 +1,59 @@
 # Pictap: Web Picture Gallery Foreword
 
 This is a fork of original Pictap from [junkfix](https://github.com/junkfix) which can be found [here](https://github.com/junkfix/Pictap). \
-At the very first I have to thank him for his great work. Without it we wouldn't have so much fun with our existing photo album anymore and also my small modifications wouldn't have been possible.\
+At the very first I have to thank him for his great work. Without it we wouldn't have so much fun with our existing photo album anymore and also my small modifications wouldn't have been possible. \
 \
-Pictap currently is the only photo gallery that meets my expectations after leaving Synology DSM 6 PhotoStation (showing "albums" structured in existing folders, users with access rights, create public links to albums, and many more).\
-After playing arround for some time I noticed some wishes for improvements - which I tried to bring in myself.\
-Now where there is some success I'ld like to share some new features and modifications.\
-\
-*Currently this is the original Pictap.\
-Please be patient when this forking process is taking some time since for me Pictap is the first project to fork and publish.*
+Pictap currently is the only photo web gallery that meets my expectations after leaving Synology DSM 6 PhotoStation (showing "albums" structured in existing folders, users with access rights, create public links to albums, and many more). And I tested arround 30... \
+Playing arround with Pictap now for some time I noticed some wishes for improvements - which I tried to bring in myself. \
+After some success I'ld like to share the new features and modifications I managed to implement.\
+I hope to have id'd all the modifications correctly in the code so you can identify changes belonging together.
 
-Modifications to Pictap 2.0.8 I'ld like to share:
-- FIXED 1		support special characters 'äöü' in filenames\
+### Modifications to Original Pictap 2.0.8
+- **Support special characters 'äöü' in filenames**\
   On Linux (Diskstation DSM 7) files and folders containing special characters wouldn't be shown.\
   On Windows 10 (with xampp) this hasn't been an issue. The change didn't effect Windows compatibility.
-- FEATURE 2	title configurable\
+- **Title configurable**\
   I just found it nice to have a configurable web page title.
-- FEATURE 3	favicon configurable\
+- **Favicon configurable**\
   Same with the favicon.\
   Here I am not very sure about the icon I had to switch off. Maybe I'll find a solution.
-- FEATURE 4	user configurable without user_folder\
-  Our existing folder gallery just is a family gallery. Now you can switch of creation of user folders and each user will login to main folder. He obviously should have the right to see all.
-- FEATURE 5	show logged in user name\
-  When testing back and forth I found it nice to see the test users on the different windows I logged in.\
+- **User without user_folder configurable**\
+  Our existing folder gallery just is a family gallery with users having some rights but without user folders.\
+  Now you can switch off creation of user folders and each user will login to main folder.
+- **Show logged in user name**\
+  When testing back and forth it was nice to see the test users on the different windows I logged in.\
   The name shows in the left menu.
-- FEATURE 6	loop gallery configurable on/off\
-  Showing photos sometimes is confusing when it rotates from last to first image - "did we have this one already ?"
-- MODIFIED 7	name all roles explicitly instead of binary 0xfff + delete some\
+- **Loop gallery on/off configurable**\
+  Showing photos sometimes is confusing when the gallery at the end loops from last to first image - "did we have this one already ?"
+- **Name all roles explicitly** instead of binary 0xfff + delete some\
   Just a small change about defining user default roles.
-- MODIFIED 8	images sort by DTOriginal: instead of sort by DTModified\
+- **Images sort by DTOriginal** instead of sort by DTModified\
   I found that images date sort happened by modified date. When I create albums I often modify images. So the timeline wouldn't match.\
   Currently this is a fixed (non configurable) change.
-- MODIFIED 9	tree default sort\
-  As above we usually sort our albums just by time. So, would be nice to set this as default instead of name sort.
-- MODIFIED 10	folders always sort by name\
-  Instead of above... For folders it seems better to always sort them by name. Because they don't have a original/taken timestamp.
-- MODIFIED 11	show DTOriginal on gallery\
+- **Tree default sort up by name**\
+  Left menu folders tree sort now looks more similar to a file explorer.
+- **Folders in gallery always sort by name**\
+  Like above... For folders in gallery it seemed more pretty to always sort them by name. Because they don't have a original/taken timestamp.
+- **Show DTOriginal on gallery**\
   For us this seemed more reasonable than the modified tiemstamp.
-- FEATURE 12	split folder names\
-  Found a funny behaviour: folder thumbnail sizes sometimes were different in height in gallery tiles view.\
+- **Split folder names**\
+  Found a funny behaviour: Folder thumbnail sizes sometimes were of different height in gallery tiles view.\
   After some search I did notice our very long folder names.\
-  Now you can configure a regex to split, shorten, ... the names.
-- FEATURE 13	sort default configurable\
-  This change made the default sort configurable.
-- OPEN 14 there seems to be a tiny issue with boolean settings which default to 1: a change to 0 seems to be not saved.\
-  This I noticed when adding a new setting.\
-  After turning the default of this new setting to 0 it could be saved.
+  Now you can configure a regex to split, shorten, ... the names eg. split at '_', '-'.
+- **Sort default configurable**\
+  This feature makes the files default sort configurable by admin (currently not per user).\
+  As mentioned above folders will be sorted by name always.
+- **Boolean settings with default == 1 couldn't be saved to 0**\
+  This is because checkboxes only submit their value if checked. If we uncheck and submit no information from this checkbox will be submitted.\
+  One solution: In itick() we have to add a hidden input with value 0 which will be submitted if the checkbox itself is unchecked and doesn't submit.\
+	See https://mimo.org/glossary/html/checkbox "Form Submission and Checkbox Value Behavior"
+### Non software modifications
+- **Updated gps.sql with more locations**\
+  Found that [umer2001/py_countries_states_cities_database](https://github.com/umer2001/py_countries_states_cities_database/raw/refs/heads/master/) in our surroundings and also places we visited contains more small towns.\
+  The new gps.sql I converted from its json files.\
+  Note that it obviously must be bigger than the original which appears to be no issue for my DS224+.\
+  Many thanks to [umer2001](https://github.com/umer2001).\
+<br><br>
 
 
 # Pictap: Web Picture Gallery for PHP  (the original by junkfix)
