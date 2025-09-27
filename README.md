@@ -43,11 +43,10 @@ I hope to have id'd all the modifications correctly in the code so you can ident
 - **Sort default configurable**\
   This feature makes the files default sort configurable by admin (currently not per user).\
   As mentioned above folders will be sorted by name always.
-### Open Points
-- **Boolean settings**\
-  There seems to be a tiny issue with boolean settings which default to 1: a change to 0 seems to be not saved.\
-  This I noticed when adding a new setting.\
-  After turning the default of this new setting to 0 it could be saved.
+- **Boolean settings with default == 1 couldn't be saved to 0**\
+  This is because checkboxes only submit their value if checked. If we uncheck and submit no information from this checkbox will be submitted.\
+  One solution: In itick() we have to add a hidden input with value 0 which will be submitted if the checkbox itself is unchecked and doesn't submit.\
+	See https://mimo.org/glossary/html/checkbox "Form Submission and Checkbox Value Behavior"
 ### Non software modifications
 - **Updated gps.sql with more locations**\
   Found that [umer2001/py_countries_states_cities_database](https://github.com/umer2001/py_countries_states_cities_database/raw/refs/heads/master/) in our surroundings and also places we visited contains more small towns.\
