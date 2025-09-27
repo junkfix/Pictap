@@ -1,24 +1,25 @@
 <?php
-/* Pictap Gallery https://github.com/junkfix/Pictap */
+/* Pictap Gallery https://github.com/bmw-biker/Pictap-Fork */
 
-const PIC_VER = ['2.0.8.1',2]; //[main, config]]
+const PIC_VER = ['2.0.8.2',2]; //[main, config]]
 
 ### Changelog ###
 ### 2.0.8.1
-# FIXED 1		support special characters 'äöü' in filenames with setlocale()
+# FIXED 1		support special characters 'äöü'
 # FEATURE 2	title configurable
 # FEATURE 3	favicon configurable
-# FEATURE 4	user configurable without user_folder
+# FEATURE 4	user without user_folder configurable
 # FEATURE 5	show logged in user name
-# FEATURE 6	loop gallery configurable on/off (pictap.js: PhotoSwipeLightbox(loop:bollean);)
+# FEATURE 6	loop gallery on/off configurable
 # MODIFIED 7	name all roles explicitly instead of binary 0xfff + delete some
-# MODIFIED 8	images sort by DTOriginal: instead of sort by DTModified
-# MODIFIED 9	tree default sort: default names to up
-# MODIFIED 10	folders always sort by name
-# MODIFIED 11	show DTOriginal on gallery
-# FEATURE 12	folder thumbnail sizes are different in height in gallery tiles view, due to very long names -> split folder names
+# MODIFIED 8	images sort by DTOriginal instead of sort by DTModified
+# MODIFIED 9	tree default sort up by name
+# MODIFIED 10	folders in gallery always sort by name
+# MODIFIED 11	show DTOriginal on gallery and info
+# FEATURE 12	split folder names configurable, folder thumbnail sizes were different in height in gallery tiles view, due to very long names
 # FEATURE 13	sort default configurable
-# BUG 14	boolean setting with default == 1 cannot be saved ???
+### 2.0.8.2
+# FIXED 14	boolean setting with default == 1 couldn't be saved to 0
 
 # TODO	sort: user selection stayes there (currently jumps back to standard on folder change)
 # TODO	sort: save user selection
@@ -1781,7 +1782,18 @@ function itick($name, $chk=0, $dis=0, $title=null, $type='checkbox'){
 	$title = $title === null ? ucfirst($name) : $title;
 	$chk = $chk ? ' checked' : '';
 	if($dis){$chk.=' disabled';}
-	return '<label class="togg"><input type="'.$type.'" name="'.$name.'" value="1"'.$chk.'> '.$title.'</label> ';
+	$out = '<label class="togg">';
+	# FIXED 14 we have to add a hidden input with value 0, otherwise boolean with default 1 wouldn't be saved as 0 because 0 would never be submitted
+	# see https://mimo.org/glossary/html/checkbox "Form Submission and Checkbox Value Behavior"
+	$out .= '<input type="hidden" name="'.$name.'" value="0"'.$chk.'> ';
+	$out .= '<input type="'.$type.'" name="'.$name.'" value="1"'.$chk.'> ';
+	$out .= $title;
+	$out .= '</label> ';
+	return $out;
+// 	$title = $title === null ? ucfirst($name) : $title;
+// 	$chk = $chk ? ' checked' : '';
+// 	if($dis){$chk.=' disabled';}
+// 	return '<label class="togg"><input type="'.$type.'" name="'.$name.'" value="1"'.$chk.'> '.$title.'</label> ';
 }
 
 function iselect($label, $name, $val, $opts){
