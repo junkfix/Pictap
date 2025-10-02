@@ -1640,10 +1640,12 @@ async function buildMenu(){
 
 
 
+// MODIFIED 9	tree default sort: default names to up
 const msorter = {
 	names: ['name','size','date'],
 	order: ['','a','d'],
-	default: ['d','d','d']
+	default: ['a','d','d']
+	//default: ['d','d','d']
 };
 
 function morderset(label,az){
@@ -1665,11 +1667,13 @@ function morderget(){
 	return {by,az,i};
 }
 
-
+// MODIFIED 8	default sort by date
 const sorter = {
+	// names: ['date','name','size','dur','type','dim','best'],
 	names: ['name','size','date','dur','type','dim','best'],
 	order: ['','a','d'],
-	default: ['a','d','d','d','d','d','d']
+	default: ['a','d','a','d','d','d','d']
+	//default: ['a','d','d','d','d','d','d']
 };
 
 function orderset(label,az){
@@ -1681,7 +1685,9 @@ function orderset(label,az){
 	az = (sorter.default[i] === az) ? '' : az;
 
 	const v = (i << 2) | (sorter.order.indexOf(az) & 0x03);
-	if(v){
+	// FEATURE 13	sort default configurable: only delete if sort is equal to default, not if is 0
+	if(v != (sorter.names.indexOf(_p.sort_default) << 2)){
+	// if(v){
 		navi.sort[m][id] = v;
 	}else{
 		delete navi.sort[m][id];
@@ -1690,12 +1696,20 @@ function orderset(label,az){
 	db.conf.put('sort', navi.sort).catch(e=>{});
 }
 
-function orderget(){
+function orderget(dflt=false){
 	const m = navi.mode;
 	const id = navi.mval;
 	if(!navi.sort[m]){navi.sort[m] = {};}
+	
+	// FEATURE 13	sort default configurable: check id "in" sort[m], not also if it is 0 (navi.sort[m][id] || 0)
+	let v = 0;
+	if( ! (id in navi.sort[m])) {
+		v = sorter.names.indexOf(_p.sort_default) << 2;
+	} else {
+		v = (navi.sort[m][id] || 0);
+	}
 
-	const v = (navi.sort[m][id] || 0);
+	// const v = (navi.sort[m][id] || 0);
 	const i = ((v >> 2) & 0x0F);
 	const by = sorter.names[ i ];
 	let az = sorter.order[ (v & 0x03) ];
@@ -2668,7 +2682,10 @@ function act_info(el,dir){
 		n.Files = v.textContent;
 	}
 	n.Path = p;
-	n.Modified = fullDate(m);
+	// MODIFIED 11	show DTOriginal on photo + in info popup (v.t instead of v.m)
+	// n.DTOriginal = 1234 in info table shows as "DTOriginal: 1234"
+	n.Date = fullDate(m);
+	//n.Modified = fullDate(m);
 	if(v = _qs('f-dev',el)){
 		n.Device = v.textContent;
 	}
@@ -3562,7 +3579,7 @@ async function media(j, n, f, m ){
 	gs.classList.add('anim');
 
 	const g = _ce('div',{'class':'gallery fade'});
-	const rule = orderget();
+	const rule = orderget(true);
 
 
 	let tQt = 0, tSz = 0, tTl, folder = [], foldersort;
@@ -3660,7 +3677,9 @@ async function media(j, n, f, m ){
 	expandMenu();
 
 	if(folder.length){
-		if(['size','date'].includes(rule.by)){
+		// MODIFIED 10	folders always sort by name
+		if( ! _p.sort_fld_name && ['size','date'].includes(rule.by)){
+		// if(['size','date'].includes(rule.by)){
 			m = rule.by === 'size' ? 3 : 2;
 			if(rule.az === 'a'){//asc
 				foldersort = folder.sort((a, b) => {return Dir.d[a][m] - Dir.d[b][m];});
@@ -3692,8 +3711,20 @@ async function media(j, n, f, m ){
 			}
 			ah.appendChild(_ce('div',{'class': 'fldr'},0,fldd));
 
+			// FEATURE 12	folder thumbnail sizes are different in height in gallery tiles view, due to very long names -> split folder names
+			let dn = getFilename(dirpath);
+			if ((_p.name_regex.length >= 3) && _p.name_regex.includes('/')) {
+				let splt = _p.name_regex.split('/');
+				if (splt.length == 4) {
+					// regex example: /_/ /g
+					dn = dn.replace(new RegExp(splt[1],splt[3]), splt[2]);
+				}
+			}
+
 			ah.appendChild(_ce('div',{'class': 'info'},0,[
-				_ce('f-nm',0,{textContent: getFilename(dirpath)}),
+				_ce('f-nm',0,{textContent: dn}),
+				// _ce('f-nm',0,{textContent: getFilename(dirpath).replace(/_|-|\+|([a-z])([A-Z])/g, '$1 $2')}),   // regex test
+				//_ce('f-nm',0,{textContent: getFilename(dirpath)}),  // orgiginal
 				_ce('f-mt',0,{textContent: relativeDate(mt)}),
 				_ce('f-sz',0,{textContent: filesize(sz)}),
 				_ce('f-qt',0,{textContent: qt})
@@ -3705,7 +3736,11 @@ async function media(j, n, f, m ){
 
 	let filesort;
 	if(['size','date','dur','best','dim'].includes(rule.by)){
-		m = {size: 's', date: 'm', dur: 'dur', best: 'z', dim: 'r'};
+		// MODIFIED 8	images sort by DTOriginal: instead of sort by DTModified
+		// Was sorted by modified 'm'
+		// DTOriginal 't' also is available in pictap.php fetch json response
+		m = {size: 's', date: 't', dur: 'dur', best: 'z', dim: 'r'};
+		//m = {size: 's', date: 'm', dur: 'dur', best: 'z', dim: 'r'};
 		m = m[ rule.by ];
 		if(rule.az == 'a'){
 			filesort = Object.keys(f).sort((a, b) => (f[a][m] || 0) - (f[b][m] || 0) );
@@ -3746,7 +3781,9 @@ async function media(j, n, f, m ){
 
 		const ext = getExt(v.n).toLowerCase();
 
-		const ah = _ce('a', {'class': 'file', href: _p.url_pictures + '/' + p + '?mt='+v.m, id: 'imt'+ii, 'data-s': v.s, 'data-i': v.i, 'data-d': v.d, 'data-tick': '0','data-ori': (v.ori ? v.ori : 0), style: '--ratio:'+((v.h) ? v.w + '/' + v.h : '4/3')});
+		// MODIFIED 11	show DTOriginal on photo + in info popup (v.t instead of v.m)
+		const ah = _ce('a', {'class': 'file', href: _p.url_pictures + '/' + p + '?mt='+v.t, id: 'imt'+ii, 'data-s': v.s, 'data-i': v.i, 'data-d': v.d, 'data-tick': '0','data-ori': (v.ori ? v.ori : 0), style: '--ratio:'+((v.h) ? v.w + '/' + v.h : '4/3')});
+		//const ah = _ce('a', {'class': 'file', href: _p.url_pictures + '/' + p + '?mt='+v.m, id: 'imt'+ii, 'data-s': v.s, 'data-i': v.i, 'data-d': v.d, 'data-tick': '0','data-ori': (v.ori ? v.ori : 0), style: '--ratio:'+((v.h) ? v.w + '/' + v.h : '4/3')});
 
 		v.ft = _p.ext_images.includes(ext)? 1 : (_p.ext_videos.includes(ext)? 2 : 0);
 
@@ -3775,8 +3812,11 @@ async function media(j, n, f, m ){
 		if(v.w){ah.appendChild(_ce('i-con'));}
 
 		const fo = _ce('div',{'class': 'info'},0,[
+			// REMARK shows details on gallery + in info popup
 			_ce('f-nm',0,{textContent: v.n}),
-			_ce('f-mt',0,{textContent: relativeDate(v.t)}),
+			// MODIFIED 11	show DTOriginal: full date on big image
+			_ce('f-mt',0,{textContent: fullDate(v.t)}),
+			//_ce('f-mt',0,{textContent: relativeDate(v.t)}),
 			_ce('f-sz',0,{textContent: filesize(v.s)}),
 			(v.w? _ce('f-rs',0,{textContent: v.w+'x'+v.h}) : 0),
 			(v.dev? _ce('f-dev',0,0,[_ce('i',{'class':'ico-camera'}),_tn(' '+v.dev)]) : 0),
@@ -3784,6 +3824,7 @@ async function media(j, n, f, m ){
 		]);
 
 
+		// REMARK shows city on big image
 		if(v.city){
 			const gp = _ce('f-gps',{'data-loc': (v.lat/10000)+','+(v.lon/10000)},0,[_ce('i',{'class':'ico-map'}),_tn(' '+v.city)]);
 			gp.onclick = (e) => {
@@ -3898,6 +3939,7 @@ const navi = {
 };
 
 
+
 function maplink(c){
 	return 'https://www.google.com/maps/search/?api=1&query='+ c;
 }
@@ -3912,7 +3954,10 @@ async function picT() {
 		zoom: false,
 		gallery: '.gallery',
 		children: 'a[data-pswp-width]',
-		pswpModule: PhotoSwipe
+		pswpModule: PhotoSwipe,
+		// FEATURE 6	loop gallery configurable on/off
+		loop: _p.slides_loop
+		// loop: false
 	});
 
 
@@ -4010,21 +4055,43 @@ async function picT() {
 					const data = lightbox.pswp.currSlide.data.element;
 					if(data){
 						let tt = '';
-						const d = _qs('f-dev',data);
-						if(d){
-							tt += '<br />'+d.innerHTML;
-						}
+						// MODIFIED 11	show DTOriginal: separate lines for date and file name + reordered
 
-						const kw = _qs('f-kw',data);
-						if(kw){
-							tt += '<br />'+kw.innerHTML;
-						}
+						tt += '<i class="ico-date"></i> ' + _qs('f-mt',data).innerHTML;
+
 						const g = _qs('f-gps',data);
 						if(g){
-							tt += '<br /><a target="_blank" href="'+maplink(g.dataset.loc) + '">'+g.innerHTML +'</a>';
+							tt += '<br /><a target="_blank" href="' + maplink(g.dataset.loc) + '">'+g.innerHTML +'</a>';
+						}
+						const kw = _qs('f-kw',data);
+						if(kw){
+							tt += '<br />' + kw.innerHTML;
 						}
 
-						el.innerHTML = '<p>' + _qs('f-mt',data).innerHTML+', ' + (_qs('f-nm',data).textContent) + tt + '</p>';
+						tt += '<br />'
+						tt += '<br /><i class="ico-folder"></i> ' + _qs('f-nm',data).textContent;
+						const d = _qs('f-dev',data);
+						if(d){
+							tt += '<br />' + d.innerHTML;
+						}
+
+						el.innerHTML = '<p>' + tt + '</p>';
+
+						// const d = _qs('f-dev',data);
+						// if(d){
+						// 	tt += '<br />'+d.innerHTML;
+						// }
+
+						// const kw = _qs('f-kw',data);
+						// if(kw){
+						// 	tt += '<br />'+kw.innerHTML;
+						// }
+						// const g = _qs('f-gps',data);
+						// if(g){
+						// 	tt += '<br /><a target="_blank" href="'+maplink(g.dataset.loc) + '">'+g.innerHTML +'</a>';
+						// }
+
+						// el.innerHTML = '<p>' + _qs('f-mt',data).innerHTML+', ' + (_qs('f-nm',data).textContent) + tt + '</p>';
 					}
 					return;
 				});
@@ -4126,7 +4193,6 @@ async function picT() {
 	}else{
 		_id('search').remove();
 	}
-
 
 	if(_p.can.login){
 		_on(document,"touchstart", ()=>{}, true);
