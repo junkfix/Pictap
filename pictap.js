@@ -1,4 +1,4 @@
-/*! Pictap Gallery 2.0.8
+/*! Pictap Gallery 2.0.9
 https://github.com/junkfix/Pictap */
 
 
@@ -110,8 +110,8 @@ const _ce = (t, att, p, m) => {
 	if(p){
 		for(const i in p) {
 			t[i] = p[i];
-			}
 		}
+	}
 	if(m){
 		(Array.isArray(m) ? m : [m]).forEach(i => {
 			if(i){t.appendChild(i);}
@@ -2650,7 +2650,12 @@ function act_refresh(id){
 
 function act_info(el,dir){
 	const d = Dir.d[_att(el, 'data-d')];
-	let p = '/' + d[0]; let m;
+	let p = '/' + d[0];
+	let m;
+	const n = {
+		Name: _qs('f-nm',el).textContent,
+		Size: _qs('f-sz',el).textContent,
+	};
 	if(dir){
 		p = p.substring(0, p.lastIndexOf('/'));
 		m = d[2];
@@ -2658,10 +2663,6 @@ function act_info(el,dir){
 		m = el.href.split('=').pop();
 	}
 
-	const n = {
-		Name: _qs('f-nm',el).textContent,
-		Size: _qs('f-sz',el).textContent,
-	};
 
 	let v;
 	if(v = _qs('f-qt',el)){
@@ -2669,6 +2670,9 @@ function act_info(el,dir){
 	}
 	n.Path = p;
 	n.Modified = fullDate(m);
+	if(v = _att(el, 'data-tk')){
+		n.Taken = fullDate(v);
+	}
 	if(v = _qs('f-dev',el)){
 		n.Device = v.textContent;
 	}
@@ -3660,7 +3664,7 @@ async function media(j, n, f, m ){
 	expandMenu();
 
 	if(folder.length){
-		if(['size','date'].includes(rule.by)){
+		if( ! _p.sort_fld_name && ['size','date'].includes(rule.by)){
 			m = rule.by === 'size' ? 3 : 2;
 			if(rule.az === 'a'){//asc
 				foldersort = folder.sort((a, b) => {return Dir.d[a][m] - Dir.d[b][m];});
@@ -3705,7 +3709,7 @@ async function media(j, n, f, m ){
 
 	let filesort;
 	if(['size','date','dur','best','dim'].includes(rule.by)){
-		m = {size: 's', date: 'm', dur: 'dur', best: 'z', dim: 'r'};
+		m = {size: 's', date: 't', dur: 'dur', best: 'z', dim: 'r'};
 		m = m[ rule.by ];
 		if(rule.az == 'a'){
 			filesort = Object.keys(f).sort((a, b) => (f[a][m] || 0) - (f[b][m] || 0) );
@@ -3753,6 +3757,7 @@ async function media(j, n, f, m ){
 		if(v.ft){
 			_att(ah,'data-pswp-width', v.w);
 			_att(ah,'data-pswp-height', v.h);
+			_att(ah,'data-tk', v.t);
 			const im = _ce('img', {loading: 'lazy'});
 			im.onload = imld;
 			if(v.th == 2){updrefresh = 1; navi.reload = 1;}
@@ -3912,7 +3917,8 @@ async function picT() {
 		zoom: false,
 		gallery: '.gallery',
 		children: 'a[data-pswp-width]',
-		pswpModule: PhotoSwipe
+		pswpModule: PhotoSwipe,
+		loop: _p.slides_loop
 	});
 
 
@@ -4009,22 +4015,24 @@ async function picT() {
 				lightbox.pswp.on("change",()=>{
 					const data = lightbox.pswp.currSlide.data.element;
 					if(data){
-						let tt = '';
-						const d = _qs('f-dev',data);
-						if(d){
-							tt += '<br />'+d.innerHTML;
+						let v = _att(data, 'data-tk');
+						let tt = '<i class="ico-date"></i> ' + relativeDate(v) + ' (' + fullDate(v) + ')';
+						
+						if(v = _qs('f-gps',data)){
+							tt += '<br /><a target="_blank" href="'+maplink(v.dataset.loc) + '">'+v.innerHTML +'</a>';
+						}
+						
+						if(v = _qs('f-kw',data)){
+							tt += '<br /><i class="ico-tag"></i> '+v.textContent;
 						}
 
-						const kw = _qs('f-kw',data);
-						if(kw){
-							tt += '<br />'+kw.innerHTML;
+						if(v = _qs('f-dev',data)){
+							tt += '<br />'+v.innerHTML;
 						}
-						const g = _qs('f-gps',data);
-						if(g){
-							tt += '<br /><a target="_blank" href="'+maplink(g.dataset.loc) + '">'+g.innerHTML +'</a>';
-						}
+						
+						tt += '<br /><i class="ico-folder"></i> ' + _qs('f-nm',data).textContent;
 
-						el.innerHTML = '<p>' + _qs('f-mt',data).innerHTML+', ' + (_qs('f-nm',data).textContent) + tt + '</p>';
+						el.innerHTML = '<p>' + tt + '</p>';
 					}
 					return;
 				});
