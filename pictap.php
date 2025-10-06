@@ -1,20 +1,22 @@
 <?php
 /* Pictap Gallery https://github.com/junkfix/Pictap */
 
-const PIC_VER = ['2.0.8',2]; //[main, config]]
+const PIC_VER = ['2.0.9',3]; //[main, config]]
 
 define('PTM', $ptset ?? 1);
-if(get('sf')){sfile(get('sf'));}
+setlocale(LC_CTYPE, "en_US.UTF-8");
 
 if(!is_array($setup=myConfig())){
-	$setup=['version'=>[0,0], 'db_setup'=>0, 'salt'=>bin2hex(random_bytes(8))];
+	$setup=['version'=>[0,0], 'db_setup'=>0, 'salt'=>bin2hex(random_bytes(8)), 'title'=>'Pictap'];
 }
 
 $setup = (object) $setup;
 define('PICTAP', $setup );
 define('ROLES', (object)roleList());
 
-if(PTM){
+if(get('sf')){sfile(get('sf'));}
+
+if(PTM){ //main page, not a shared album view
 	if($setup->version[1] != PIC_VER[1]){
 		if(property_exists($setup,'users')){
 			userAuth(true);
@@ -1062,10 +1064,18 @@ function menuList(){
 		$p = intval($r['parentid']);
 		$l = [ $r['dir'], $p, (int)$r['mt'], (int)$r['sz'], (int)$r['qt'] ];
 		$menu[$r['dirid']] = $l;
-		if($r['dir'] === $user){
-			$home = (int)$r['dirid'];
-			$root = $p;
+		if (userCan('ownfolder')) {
+			if($r['dir'] === $user){
+				$home = (int)$r['dirid'];
+				$root = $p;
+			}
+		} else {//user has no own folder - it is same (root) as admin
+			if($r['dir'] === ''){
+				$home = (int)$r['dirid'];
+				$root = $p;
+			}
 		}
+
 		if($r['dir'] === ''){$root = (int)$r['dirid'];}
 	}
 
@@ -1232,7 +1242,7 @@ function userCan($cando, $role=null) {
 
 function roleList($role=null){
 	$x=[];
-	foreach(explode(',','admin,alldir,login,family,upload,search,edit,rename,move,delete,album,newdir') as $k=>$v){
+	foreach(explode(',','admin,alldir,login,family,upload,search,edit,rename,move,delete,album,newdir,ownfolder') as $k=>$v){
 		$c = 1 << $k;
 		if($role !== null){
 			$c = ((($role & $c) === $c)? 1 : 0);
@@ -1710,19 +1720,32 @@ function userform($id,$user){
 	$out .= itext('<i>Password:</i>', 'pass'.$id, $user[1], 'Password', $req.' maxlength="32"');
 
 	if($id != '1'){
-		$perm = (userCan('alldir',$user[3]) << 1) | userCan('family',$user[3]);
 		$u = '/'.$ul;
+		$up = [
+			[ROLES->ownfolder, $u.' Folder'],
+			[ROLES->ownfolder + ROLES->family, $u.' + /Family Folders'],
+			[ROLES->alldir + ROLES->family, 'All Folders (no '.$u.' folder creation)'],
+			[ROLES->ownfolder + ROLES->family + ROLES->alldir, 'All Folders']
+		];
+		$perm = userCan('ownfolder',$user[3])? (ROLES->ownfolder) : (ROLES->alldir + ROLES->family);
+		if(userCan('alldir',$user[3])){
+			$perm |= ROLES->alldir + ROLES->family;
+		}
+		if(userCan('family',$user[3])){
+			$perm |= ROLES->family;
+		}
 		$out .= '<label><i>Permission:</i><br/><select name="perm'.$id.'">';
-		foreach([$u.' Folder',$u.' + /Family Folders','All Folders'] as $i=>$t){
-			$chk = ($perm == $i)? ' selected' : '';
+		
+		foreach($up as $i=>$t){
+			$chk = ($perm == $t[0])? ' selected' : '';
 			if($i === 1 && PICTAP->family_dir == ''){$chk = ' disabled';}
-			$out.='<option value="'.$i.'"'.$chk.'>'.$t.'</option>';
+			$out.='<option value="'.$t[0].'"'.$chk.'>'.$t[1].'</option>';
 		}
 		$out .= '</select></label>';
 	}
 
 	foreach(ROLES as $r=>$n){
-		if(in_array($r,['family','alldir'])){continue;}
+		if(in_array($r,['family','alldir','ownfolder'])){continue;}
 		$out .= itick($r.$id, userCan($r,$user[3]), ($id == '1' && in_array($r,['admin','login'])), ucfirst($r));
 	}
 
@@ -1795,13 +1818,10 @@ function pageAccounts(){
 		foreach($idlist as $id){
 			if(!is_numeric($id)){break;}
 			$id = (int)$id;
-			$role = 0;
-			$af = intval(post('perm'.$id));
-			$_POST['alldir'.$id]=''.(($af >> 1) & 0x1);
-			$_POST['family'.$id]=''.(($af & 0x1));
+			$role = intval(post('perm'.$id));
 			foreach(ROLES as $r=>$n){
 				if(post($r.$id)
-					|| ($id === 1 && in_array($r,['admin','alldir','login']) )
+					|| ($id === 1 && in_array($r,['admin','alldir','family','login','ownfolder']) )
 				){
 					$role |= $n;
 				}
@@ -1834,9 +1854,13 @@ function pageAccounts(){
 				}
 			}else if($user[0] !==''){//create
 				$setup->users[$id] = $user;
-				$newp = PICTAP->path_pictures .'/'.$user[0];
-				makeDir($newp);
-				scanFolder($newp);
+				$uh = PICTAP->path_pictures;
+				if (userCan('ownfolder')) {
+					$uh .= '/'.$user[0];
+					makeDir($uh);
+				}
+				scanFolder($uh);
+				
 				if(!userUpdate($setup, $id, $setup->users[$id], 1)){$msg.='<h3>Error userCreate</h3>';}
 				$d = 'User Created '.$id.': '.$setup->users[$id][0].' by: '.USER->user;
 				logger($d);
@@ -1864,7 +1888,7 @@ function pageAccounts(){
 	}
 
 	$id = $maxid + 1;
-	$out .= userform($id, ['','','',(0xfff ^ ROLES->admin ^ ROLES->alldir ^ ROLES->family)]);
+	$out .= userform($id, ['','','',(0x1fff ^ ROLES->admin ^ ROLES->alldir ^ ROLES->family)]);
 	$idlist[]=$id;
 
 	$out .= '<input type="hidden" name="idlist" value="'.implode(',',$idlist).'">';
@@ -1888,18 +1912,26 @@ function pageConfig($oldsetup){
 	$url = strtok($_SERVER['REQUEST_URI'], '?');
 	$out='<form style="padding:1em" method="post" action="'.$url.'?page=settings" name="login" autocomplete="off" onsubmit="_id(\'ssav\').classList.add(\'loader\');">';
 
-	$input=['db_setup'=>0,'users'=>['1'=>['Admin','','',0xfff]]]; //id => [user, pass, token, role]
+	$input=['db_setup'=>0,'users'=>['1'=>['Admin','','',0xffff]]]; //id => [user, pass, token, role]
 
 	$setup = clone $oldsetup;
 	if($setup->version[1]){
 		if($setup->version[1] == '1,1'){//db migration
 			$setup->db_setup = 1;
 			$setup->family_dir = $setup->users[0][0];
+			$setup->version[1] = 1;
 			unset($setup->users[0]);
 		}
 		if($setup->db_setup){
 			$input['db_setup'] = 1;
 			$input['users'] = $setup->users;
+		}
+		if($setup->version[1] < 3){ //upgrade new roles
+			foreach($input['users'] as $id=>$user){
+				if($id < 1){continue;}
+				$input['users'][$id][3] |= ROLES->ownfolder;
+				if(!userUpdate($setup, $id, $input['users'][$id])){$msg.='<h3>Error userUpdate</h3>';}
+			}			
 		}
 	}
 
@@ -1951,10 +1983,15 @@ function pageConfig($oldsetup){
 		'cookie'		=> ['text', 'pictap', 1, 'Login Cookie (in case of multi install)','pattern="^[A-Za-z0-9]*$"'],
 		'search_max_results' 	=> ['number', 1000, 1, ''],
 		'auto_hide_slideshow_ui'=> ['number', 0, 1,'0 = disable, 4 = after 4 sec ...'],
+		'slides_loop'	=> ['tick', 0, 1, 'Loop the gallery: In large image mode after the last one show the first one.'],
+		'sort_fld_name'	=> ['tick', 0, 1, 'Sort folders always by name'],
 		'max_mp' 		=> ['number', 6000 * 5000, 1,'Width x Height, Larger images may not get thumbnails'],
 		'auto_rename' 	=> ['tick', 0, 1, 'Auto Rename IMG_/VID_date_time.* to date_time.*'],
 		'fix_ext' 	=> ['tick', 1, 1, 'Auto fix incorrect extensions'],
 		'skip_corrupt' 	=> ['tick', 1, 1, 'Do not attempt to regenerate thumbnails that have already failed once.'],
+		'title' 		=> ['text', 'Pictap', 1,'Custom Page Title'],
+		'favicon_svg' 		=> ['text', '', 0,'eg. favicon.svg or leave blank for built-in icon'],
+		'favicon_png' 		=> ['text', '', 0,'eg. favicon.png for 180x180 or leave blank for built-in icon'],
 		'debug'			=> ['select', '2', 1, 'Debug Level',['0'=>'0: Off','1'=>'1: Verbose (All)','2'=>'2: Info (Some)','3'=>'3: Warnings only']],
 		'debug_file' 	=> ['text', $db.'/debug.log', 0,'Debug file (optional) eg. '. $db.'/debug.log'],
 	];
@@ -1973,7 +2010,13 @@ function pageConfig($oldsetup){
 		foreach ($defs as $k=>$v){
 			if($setup->db_setup && in_array($k,['admin_user','admin_pass'])){continue;}
 			$p = post($k,1);
-			if($p === null){$p = $v[1];}
+			if($p === null){
+				if($v[0] === 'tick'){
+					$p = '0';
+				}else{
+					$p = $v[1];
+				}
+			}
 			$i = trim($p);
 			if($v[0] === 'number'){$i = (int)$i;}
 			if($v[0] === 'tick'){$i = $i? 1 : 0;}
@@ -2050,7 +2093,7 @@ function pageConfig($oldsetup){
 				}catch(Exception $e) {
 					error('Table Error: '. $e->getMessage());
 				}
-				if(!userUpdate($setup, 1, $setup->users[1],1)){
+				if(!userUpdate($setup, 1, $setup->users[1], 1)){
 					$msg.='<h3>Error userCreate</h3>';
 				}else{
 					$input['db_setup']=1;
@@ -2258,7 +2301,7 @@ function postTasks(){
 			if(!$ua){sendjs(0,'Invalid request');}
 			albumLinks(0,$aid,1);
 
-			if(($fr = $dbo->run("DELETE FROM {$pp}albumfiles af WHERE af.albumid = ? AND EXISTS ( SELECT 1 FROM {$pp}albums aa WHERE aa.albumid = af.albumid $uf );", [$aid], 0, __LINE__)) === false){
+			if(($fr = $dbo->run("DELETE FROM {$pp}albumfiles WHERE albumid = ? AND EXISTS ( SELECT 1 FROM {$pp}albums aa WHERE aa.albumid = {$pp}albumfiles.albumid $uf );", [$aid], 0, __LINE__)) === false){
 				sendjs(0, $dbo->myerr());
 			}
 			$fr = $dbo->rowCount();
@@ -3018,9 +3061,21 @@ function sfile($f){
 	if($f=='png'){
 		header('Content-Type: image/png');
 		$p=base64_decode('iVBORw0KGgoAAAANSUhEUgAAALQAAAC0BAMAAADP4xsBAAAABGdBTUEAALGPC/xhBQAAAA9QTFRF////8cQUFLYE0wQDFFzz/taDWAAAAvJJREFUaN7tmttt4zAQRUlZBYhRCnBoFxCHDVgA+69p7VXk1eMOHzMksgF4P/1xfHBFiByBSrW0tLS0tLS0tLRUS2cfOVcAazvnXI1s7VCjjDkftZwfKYtek7dt9/6ZexnyRtsvkRe9Rff+X+7iotfoNZnH3pOXsrdkDruj0N5L2ZZA+2PE0jO692K2JdCInFdJR6A9jlD6ie69mN0RaIqcUQki24B0unZHoGlysrbF6IB0qjaW/ghJp2q/QfQ5KJ2ojfs4h8lJ2rgPG5FO0sZ92Bg5RRuTrwXQHRftueg4Oa7Nlq6J9tX6iGp3fOmaaM+p2ldDJ0pHGpFIM9DX/wDts9G+DLpLtZ5MCTTUNuYts+wusezJGPNeZ/WZZ0qgr0gasO+MrRFKHyu5y99P39IHbSV/QS3kvbZ8m3lJ79nyfcaskrM76qj2tEa/5xwXbEzbbNIXPORMW/TQp5/6dETb7LKMC/xT8KI97dHD36lPMhYs2sYctWVj46I9HdE5n7xC2saItDWtPSH0IG/EYuksbaqR64TRJbSNqaV9KYAmtJ0z8kag9oVEi7Wdq6V9KYRWWJpkiz5tXYJokbZzIfYg0L6E0YmN6AfgttdeyO4mQJ9mxNBBaUkjekF8QmlKOwU9vhhfUJrSTq5jx16TCe0c6UegNKEdb2QLQdKE9pDTx6uSnTRm56IdkmaiR3fUPkhjdl7Vs7arhHZIGrLz0V+uGprIr0RXLISxQsZ66BO7j1JoUw19Y72wfxrN2wpGrvSgSpTN3MA0UzrltMBFK1WgEVMNzT89KZ50Ejqy/D7lJ1UqWnK+DktryVQQ1FaygSMkrWQTWEBbKdmUpAPSWjiAjbS0Fk6kmpTG6Jyp8URJY3TW5RNKWolHXaytCHTmdRxAHgh07rU5DeuAXWdffTqhOhCacWFrROQjmnWLENRxRDPvJwLy4Tly7/QB8k5bsTOulh3SVoJ8f9HZ/FSGjP9O9gTDqQZuaWlpaWlpaWn5XfkDdD7J4HoVV4MAAAAASUVORK5CYII=');
+		if(!empty(PICTAP->favicon_png)){
+			$q = file_get_contents(dirnm(__FILE__) .'/'.PICTAP->favicon_png);
+			if($q !== false){
+				$p = $q;
+			}
+		}
 	}else if($f=='svg'){
 		header('Content-Type: image/svg+xml');
 		$p = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><path fill="#fff" d="M0 96V0h96v96z"/><path fill="#125bf3" d="M48 48 36 36s12-19 24-18 26 18 20 24c-7 7-20-6-20-6Z"/><path fill="#12b600" d="M48 48 36 60S16 45 15 35c0-9 19-25 26-18s-5 19-5 19z"/><path fill="#f1c40f" d="m48 48 12-12s21 13 19 27-20 22-26 16 7-19 7-19Z"/><path fill="#d30000" d="m48 48 12 12S46 81 35 80c-11-2-24-18-17-25s18 5 18 5z"/></svg>';
+		if(!empty(PICTAP->favicon_svg)){
+			$q = file_get_contents(dirnm(__FILE__) .'/'.PICTAP->favicon_svg);
+			if($q !== false){
+				$p = $q;
+			}
+		}
 	}else if($f=='sw'){
 		header('Content-Type: application/javascript');
 		$p = '
@@ -3036,8 +3091,9 @@ addEventListener("fetch",(e)=>{if(e.request.url.includes("'.$u.'?upload=app")){
 }});';
 	}else if($f=='mf'){
 		header('Content-Type: application/json');
+		$t = PICTAP->title;
 		$p = '{
-"name":"Pictap","short_name":"Pictap","description":"Photo Gallery",
+"name":"'.$t.'","short_name":"'.$t.'","description":"Photo Gallery",
 "start_url":"'.$u.'",
 "display":"standalone","background_color":"#000000",
 "launch_handler":{"client_mode":["focus-existing","auto"]},
@@ -3100,7 +3156,7 @@ function htmldoc($config='',$lightbox='',$js=''){
 		}else{
 			$page = 'config';
 		}
-		$t = 'Pictap';
+		$t = PICTAP->title;
 		echo'<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="'.$u.'mf" />';
 	}else{
 		$t = $config;
@@ -3119,7 +3175,7 @@ function htmldoc($config='',$lightbox='',$js=''){
 	<div id="topbar">
 		<div class="rbtn" id="lines" title="Menu" onclick="sidebar(2);"><i class="ico-menu"></i></div>
 
-		<div id="title">Pictap Gallery</div>
+		<div id="title"><?php echo PICTAP->title; ?></div>
 		<form id="srchf" autocomplete="off"><input title="Search Text" type="search" id="srch"></form>
 		<div class="rbtn" id="noselect" title="Selection" onclick="cMenu(event, this, 'sels')"><i class="ico-ring"></i></div>
 		<div id="selected"></div>
@@ -3138,6 +3194,9 @@ function htmldoc($config='',$lightbox='',$js=''){
 
 <aside id="sidebar">
 	<nav>
+		<div style="position:absolute; left:10px"><?php
+			echo defined('USER') ? USER->user : "Not logged in";
+		?></div>
 		<a id="accounts" title="Accounts" class="rbtn" href="?page=accounts"><i class="ico-user"></i></a>
 		<a id="settings" title="Settings" class="rbtn" href="?page=settings"><i class="ico-set"></i></a>
 		<div class="rbtn" title="Logout" onclick="cMenu(event, this,'exit')"><i class="ico-exit"></i></div>
@@ -3175,6 +3234,8 @@ function htmldoc($config='',$lightbox='',$js=''){
 		'ext_videos'=>[],
 		'ext_uploads'=>[],
 		'auto_hide_slideshow_ui'=>0,
+		'slides_loop'=>0,
+		'sort_fld_name'=>0,
 		'url_thumbs'=>'',
 		'url_pictures'=>''
 	];
