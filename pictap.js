@@ -1,4 +1,4 @@
-/*! Pictap Gallery 2.0.8
+/*! Pictap Gallery 2.0.9.1
 https://github.com/junkfix/Pictap */
 
 
@@ -1669,7 +1669,6 @@ function morderget(){
 
 // MODIFIED 8	default sort by date
 const sorter = {
-	// names: ['date','name','size','dur','type','dim','best'],
 	names: ['name','size','date','dur','type','dim','best'],
 	order: ['','a','d'],
 	default: ['a','d','a','d','d','d','d']
@@ -2019,6 +2018,7 @@ async function cMenu(e,dhis,who,rpt){
 	switch(who){
 
 		case 'dots':{
+			// directory's upper right dots menu
 			let t = 0;
 			let a = sels.length === 0 ? 'upload,newdir,album'+((navi.mode == 'd')?',refresh':'') : 'left,refresh,move,album,map,share,download,delete';
 			for(let i of a.split(',')){
@@ -2061,6 +2061,7 @@ async function cMenu(e,dhis,who,rpt){
 			break;
 		}
 		case 'sels':{
+			// directory's upper left selection menu if min 1 file has been selected
 			const c = {none: 'ring', invert: 'invert', all: 'tick'};
 			for(const i of Object.keys(c)){
 				const li = _ce('li');
@@ -2071,6 +2072,7 @@ async function cMenu(e,dhis,who,rpt){
 			break;
 		}
 		case 'img':{
+			// photo's upper right dots menu
 			let l = 'info,eday,edit,map,thumb,rename,move,delete'.split(',');
 			if(_att(dhis,'data-ext')){
 				l = l.filter((i) => !['edit','map','thumb'].includes(i));
@@ -2098,6 +2100,7 @@ async function cMenu(e,dhis,who,rpt){
 			break;
 		}
 		case 'dir':{
+			// directory's right click (long press on mobile phone) menu
 			for(const i of 'info,refresh,rename,move,delete'.split(',')){
 				if(!_p.can[i]){continue;}
 				const li = _ce('li');
@@ -2108,6 +2111,7 @@ async function cMenu(e,dhis,who,rpt){
 			break;
 		}
 		case 'alb':{
+			// album's right click (long press on mobile phone) menu
 			if(_p.can.edit){
 				const li = _ce('li');
 				li.innerHTML = '<i class="ico-info"></i> '+items.albumm;
@@ -2122,6 +2126,7 @@ async function cMenu(e,dhis,who,rpt){
 			break;
 		}
 		case 'sort':{
+			// album's, directory's,... upper right sort menu
 			if((navi.mode == 't' && navi.mval == 'Timeline') ||
 				(navi.mode == 'a' && navi.mval == 'Albums') ||
 				(navi.mode == 'k' && navi.mval == 'Tags')
@@ -2172,6 +2177,7 @@ async function cMenu(e,dhis,who,rpt){
 			break;
 		}
 		case 'view':{
+			// directory's upper right view menu
 			const v = navi.view.i || 'rows';
 			for(const [i, a] of Object.entries(viewitms)){
 				const li = _ce('li');
@@ -2664,7 +2670,12 @@ function act_refresh(id){
 
 function act_info(el,dir){
 	const d = Dir.d[_att(el, 'data-d')];
-	let p = '/' + d[0]; let m;
+	let p = '/' + d[0];
+	let m;
+	const n = {
+		Name: _qs('f-nm',el).textContent,
+		Size: _qs('f-sz',el).textContent,
+	};
 	if(dir){
 		p = p.substring(0, p.lastIndexOf('/'));
 		m = d[2];
@@ -2672,10 +2683,6 @@ function act_info(el,dir){
 		m = el.href.split('=').pop();
 	}
 
-	const n = {
-		Name: _qs('f-nm',el).textContent,
-		Size: _qs('f-sz',el).textContent,
-	};
 
 	let v;
 	if(v = _qs('f-qt',el)){
@@ -2831,6 +2838,17 @@ function itick(n,t,c,ty='checkbox'){
 	return {l,i};
 }
 
+// FEATURE 19	create random public url name for public albums
+function randomString(len, charSet) {
+    charSet = charSet || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var randomString = '';
+    for (var i = 0; i < len; i++) {
+        var randomPoz = Math.floor(Math.random() * charSet.length);
+        randomString += charSet.substring(randomPoz,randomPoz+1);
+    }
+    return randomString;
+}
+
 function makeAlb(add){
 	editAlb(0,{'0':{name:'',share:0,family:0,own:1}},add);
 }
@@ -2866,10 +2884,31 @@ function editAlb(aid,make,add){
 	const sh = itick('s','Public', a.share);
 	sh.i.onchange = ()=>{
 		if(sh.i.checked){
-			if(!sn.value){sn.value = a.name.replace(/ /g,'');}
+			// FEATURE 19	usse random if checked
+			if(!sn.value){
+				if(rd.i.checked) {
+					sn.value = randomString(20);
+				}else{
+					sn.value = a.name.replace(/ /g,'');
+				}
+			}
+			// if(!sn.value){sn.value = a.name.replace(/ /g,'');}
 			slnk(sn.value);
 		}else{
 			slnk(0);
+		}
+	};
+
+	// FEATURE 19	create checkbox
+	const rd = itick('r','Random URL', a.rand);
+	rd.i.onchange = ()=>{
+		if(sh.i.checked) {
+			if (rd.i.checked){
+				sn.value = randomString(20);
+			}else{
+				sn.value = an.value.replace(/ /g,'');
+			}
+			slnk(sn.value);
 		}
 	};
 
@@ -2880,8 +2919,13 @@ function editAlb(aid,make,add){
 	}else{
 		sn.value = a.name.replace(/ /g,'');
 		an.oninput = ()=>{
-			sn.value = an.value.replace(/ /g,'');
-			slnk(sn.value);
+			// FEATURE 19	only overwrite url if not random
+			if ( ! rd.i.checked) {
+				sn.value = an.value.replace(/ /g,'');
+				slnk(sn.value);
+			}
+			// sn.value = an.value.replace(/ /g,'');
+			// slnk(sn.value);
 		};
 		slnk(0);
 	}
@@ -2899,6 +2943,8 @@ function editAlb(aid,make,add){
 	el.appendChild(_ce('br'));
 	el.appendChild(sh.l);
 	el.appendChild(fm.l);
+	// FEATURE 19	append checkbox
+	el.appendChild(rd.l);
 	el.appendChild(sd);
 
 	popup(el,(aid?'Edit':'Create')+' Album: '+a.name,{
@@ -3665,7 +3711,9 @@ async function media(j, n, f, m ){
 	}else if(navi.mode=='d'){
 		const [dirpath, pid, mt, sz, qt] = Dir.d[navi.dir];
 		tSz = sz; tQt = qt;
-		const tl = (dirpath.length)? dirpath : _p.url_pictures + '/';
+		// FEATURE 16	show main page title instead of local Pictap dirpath
+		const tl = (dirpath.length)? dirpath : _p.title;
+		// const tl = (dirpath.length)? dirpath : _p.url_pictures + '/';
 		tTl = tl.split('/').join(' / ');
 
 		_id('srch').value = ''; navi.kwd = '';
@@ -3677,9 +3725,7 @@ async function media(j, n, f, m ){
 	expandMenu();
 
 	if(folder.length){
-		// MODIFIED 10	folders always sort by name
 		if( ! _p.sort_fld_name && ['size','date'].includes(rule.by)){
-		// if(['size','date'].includes(rule.by)){
 			m = rule.by === 'size' ? 3 : 2;
 			if(rule.az === 'a'){//asc
 				foldersort = folder.sort((a, b) => {return Dir.d[a][m] - Dir.d[b][m];});
@@ -3713,7 +3759,8 @@ async function media(j, n, f, m ){
 
 			// FEATURE 12	folder thumbnail sizes are different in height in gallery tiles view, due to very long names -> split folder names
 			let dn = getFilename(dirpath);
-			if ((_p.name_regex.length >= 3) && _p.name_regex.includes('/')) {
+			// FIXED 17		gallery didn't show any folders if name_regex didn't exist (after update from 2.0.8 to 2.0.8.1-3)
+			if (_p.hasOwnProperty('name_regex') && (_p.name_regex.length >= 3) && _p.name_regex.includes('/')) {
 				let splt = _p.name_regex.split('/');
 				if (splt.length == 4) {
 					// regex example: /_/ /g
@@ -3723,7 +3770,6 @@ async function media(j, n, f, m ){
 
 			ah.appendChild(_ce('div',{'class': 'info'},0,[
 				_ce('f-nm',0,{textContent: dn}),
-				// _ce('f-nm',0,{textContent: getFilename(dirpath).replace(/_|-|\+|([a-z])([A-Z])/g, '$1 $2')}),   // regex test
 				//_ce('f-nm',0,{textContent: getFilename(dirpath)}),  // orgiginal
 				_ce('f-mt',0,{textContent: relativeDate(mt)}),
 				_ce('f-sz',0,{textContent: filesize(sz)}),
@@ -3736,11 +3782,7 @@ async function media(j, n, f, m ){
 
 	let filesort;
 	if(['size','date','dur','best','dim'].includes(rule.by)){
-		// MODIFIED 8	images sort by DTOriginal: instead of sort by DTModified
-		// Was sorted by modified 'm'
-		// DTOriginal 't' also is available in pictap.php fetch json response
 		m = {size: 's', date: 't', dur: 'dur', best: 'z', dim: 'r'};
-		//m = {size: 's', date: 'm', dur: 'dur', best: 'z', dim: 'r'};
 		m = m[ rule.by ];
 		if(rule.az == 'a'){
 			filesort = Object.keys(f).sort((a, b) => (f[a][m] || 0) - (f[b][m] || 0) );
@@ -3790,6 +3832,7 @@ async function media(j, n, f, m ){
 		if(v.ft){
 			_att(ah,'data-pswp-width', v.w);
 			_att(ah,'data-pswp-height', v.h);
+			_att(ah,'data-tk', v.t);
 			const im = _ce('img', {loading: 'lazy'});
 			im.onload = imld;
 			if(v.th == 2){updrefresh = 1; navi.reload = 1;}
@@ -3939,7 +3982,6 @@ const navi = {
 };
 
 
-
 function maplink(c){
 	return 'https://www.google.com/maps/search/?api=1&query='+ c;
 }
@@ -3955,9 +3997,7 @@ async function picT() {
 		gallery: '.gallery',
 		children: 'a[data-pswp-width]',
 		pswpModule: PhotoSwipe,
-		// FEATURE 6	loop gallery configurable on/off
 		loop: _p.slides_loop
-		// loop: false
 	});
 
 
@@ -4193,6 +4233,7 @@ async function picT() {
 	}else{
 		_id('search').remove();
 	}
+
 
 	if(_p.can.login){
 		_on(document,"touchstart", ()=>{}, true);
