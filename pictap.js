@@ -3711,7 +3711,7 @@ async function media(j, n, f, m ){
 	}else if(navi.mode=='d'){
 		const [dirpath, pid, mt, sz, qt] = Dir.d[navi.dir];
 		tSz = sz; tQt = qt;
-		// FEATURE 16	show main page title instead of local Pictap dirpath
+		// FEATURE 15	show main page title instead of local Pictap dirpath
 		const tl = (dirpath.length)? dirpath : _p.title;
 		// const tl = (dirpath.length)? dirpath : _p.url_pictures + '/';
 		tTl = tl.split('/').join(' / ');

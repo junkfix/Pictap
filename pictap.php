@@ -25,8 +25,7 @@ const PIC_VER = ['2.0.9.1',3]; //[main, config]]
 ### 2.0.9.1
 # Changes with * have been included by junkfix version 2.0.9
 # FEATURE	*	merged changes of junkfix version 2.0.9
-# FEATURE 15	browser tab title configurable (same as page title) 
-# FEATURE 16	show main page title instead of local Pictap dirpath
+# FEATURE 15	browser tab title configurable (same as page title instead of local Pictap dirpath)
 # FIXED 17		gallery didn't show any folders if name_regex didn't exist (eg. after update from 2.0.8 to 2.0.8.1-3)
 # FIXED	*		delete Album: right click, remove album -> Error: You have an error in your SQL syntax
 # FEATURE 19	create random public url name for public albums
@@ -3308,7 +3307,7 @@ function htmldoc($config='',$lightbox='',$js=''){
 		'name_regex'=>'',
 		// FEATURE 13	sort: default configurable
 		'sort_default'=>'',
-		// FEATURE 16	show main page title instead of local Pictap dirpath
+		// FEATURE 15	show main page title instead of local Pictap dirpath
 		'title'=>''
 	];
 	$role = 0;
