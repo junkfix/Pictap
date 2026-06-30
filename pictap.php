@@ -659,7 +659,10 @@ function getExif(&$r){
 
 	$cxt = strtolower($exif['FileTypeExtension'] ?? '');
 	$exa = splitExt($path);
-	if(!empty(PICTAP->fix_ext) && $cxt && $exa[2] != $cxt){
+	$ext = strtolower($exa[2]);
+	$ft = in_array($ext, PICTAP->ext_videos)? 2 : (in_array($ext, PICTAP->ext_images)? 1 : 0);
+			
+	if(!empty(PICTAP->fix_ext) && $ft && $cxt && $ext != $cxt){
 		$npath = $exa[0].'.' . $cxt;
 		logger("FixExt: $path to $npath", 2);
 		updateDir(['dirid'=>$r['dirid']],['mt'=>0]);
